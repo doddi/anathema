@@ -50,10 +50,16 @@ impl<'a, 'expr> ValueResolver<'expr> for Deferred<'a, 'expr> {
         match value {
             ValueExpr::Ident(path) => Some(Path::from(&**path)),
             ValueExpr::Index(lhs, index) => {
+                eprintln!("{lhs:?}");
                 // lhs can only be either an ident or an index
                 let lhs = self.resolve_path(lhs)?;
                 let index = self.resolve_path(index)?;
                 Some(lhs.compose(index))
+            }
+            ValueExpr::Dot(lhs, rhs) => {
+                let lhs = self.resolve_path(lhs)?;
+                let rhs = self.resolve_path(rhs)?;
+                Some(lhs.compose(rhs))
             }
             _ => None,
         }
@@ -156,7 +162,7 @@ impl<'a, 'expr> Resolver<'a, 'expr> {
                 }
 
                 output
-            },
+            }
             val => {
                 let Ok(val) = T::try_from(val) else {
                     return output;
@@ -202,11 +208,20 @@ impl<'a, 'expr> ValueResolver<'expr> for Resolver<'a, 'expr> {
                 let index = self.resolve_path(index)?;
                 Some(lhs.compose(index))
             }
+            ValueExpr::Dot(lhs, rhs) => {
+                let lhs = self.resolve_path(lhs)?;
+                let rhs = self.resolve_path(rhs)?;
+                Some(lhs.compose(rhs))
+            }
             _ => None,
         }
     }
 
     fn lookup_path(&mut self, path: &Path) -> ValueRef<'expr> {
+        // TODO: This should not be the same as the deferred resolver.
+        //       Look at the code for dot resolution inside the ValueExpr::eval
+        //
+        //       This lookup should not be able to return a deferred value
         self.context.lookup(path)
     }
 }
@@ -288,7 +303,7 @@ macro_rules! none_to_empty {
             Some(val) => val,
             None => return ValueRef::Empty,
         }
-    }
+    };
 }
 
 impl ValueExpr {
@@ -362,6 +377,9 @@ impl ValueExpr {
             Self::Ident(path) => resolver.lookup_path(&Path::from(&**path)),
             Self::Dot(lhs, rhs) => {
                 let lhs = none_to_empty!(resolver.resolve_path(lhs));
+                let ValueRef::Deferred(lhs) = resolver.lookup_path(&lhs) else {
+                    panic!()
+                };
                 let rhs = none_to_empty!(resolver.resolve_path(rhs));
                 let path = lhs.compose(rhs);
                 resolver.lookup_path(&path)
@@ -430,7 +448,8 @@ impl From<&str> for ValueExpr {
 mod test {
     use crate::map::Map;
     use crate::testing::{
-        add, and, div, dot, eq, ident, inum, list, modulo, mul, neg, not, or, strlit, sub, unum, TestExpression,
+        add, and, div, dot, eq, ident, inum, list, modulo, mul, neg, not, or, strlit, sub, unum,
+        TestExpression,
     };
     use crate::ValueRef;
 
@@ -446,89 +465,89 @@ mod test {
         expr.test().expect_owned(-3);
     }
 
-//     #[test]
-//     fn sub_static() {
-//         let expr = sub(unum(10), unum(2));
-//         expr.test([]).expect_owned(8u8);
-//     }
+    //     #[test]
+    //     fn sub_static() {
+    //         let expr = sub(unum(10), unum(2));
+    //         expr.test([]).expect_owned(8u8);
+    //     }
 
-//     #[test]
-//     fn mul_static() {
-//         let expr = mul(unum(10), unum(2));
-//         expr.test([]).expect_owned(20u8);
-//     }
+    //     #[test]
+    //     fn mul_static() {
+    //         let expr = mul(unum(10), unum(2));
+    //         expr.test([]).expect_owned(20u8);
+    //     }
 
-//     #[test]
-//     fn div_static() {
-//         let expr = div(unum(10), unum(2));
-//         expr.test([]).expect_owned(5u8);
-//     }
+    //     #[test]
+    //     fn div_static() {
+    //         let expr = div(unum(10), unum(2));
+    //         expr.test([]).expect_owned(5u8);
+    //     }
 
-//     #[test]
-//     fn mod_static() {
-//         panic!()
-//         // let expr = modulo(unum(5), unum(3));
-//         // expr.test([]).expect_owned(2u8);
-//     }
+    //     #[test]
+    //     fn mod_static() {
+    //         panic!()
+    //         // let expr = modulo(unum(5), unum(3));
+    //         // expr.test([]).expect_owned(2u8);
+    //     }
 
-//     #[test]
-//     fn bools() {
-//         // false
-//         let expr = ident("is_false");
-//         expr.test([("is_false", &false)]).expect_owned(false);
+    //     #[test]
+    //     fn bools() {
+    //         // false
+    //         let expr = ident("is_false");
+    //         expr.test([("is_false", &false)]).expect_owned(false);
 
-//         // // not is false
-//         // let expr = not(ident("is_false"));
-//         // expr.test([("is_false", false.into())]).expect_owned(true);
+    //         // // not is false
+    //         // let expr = not(ident("is_false"));
+    //         // expr.test([("is_false", false.into())]).expect_owned(true);
 
-//         // // equality
-//         // let expr = eq(ident("one"), ident("one"));
-//         // expr.test([("one", 1.into())]).expect_owned(true);
+    //         // // equality
+    //         // let expr = eq(ident("one"), ident("one"));
+    //         // expr.test([("one", 1.into())]).expect_owned(true);
 
-//         // // not equality
-//         // let expr = not(eq(ident("one"), ident("two")));
-//         // expr.test([("one", 1.into()), ("two", 2.into())])
-//         //     .expect_owned(true);
+    //         // // not equality
+    //         // let expr = not(eq(ident("one"), ident("two")));
+    //         // expr.test([("one", 1.into()), ("two", 2.into())])
+    //         //     .expect_owned(true);
 
-//         // // or
-//         // let expr = or(ident("one"), ident("two"));
-//         // expr.test([("one", false.into()), ("two", true.into())])
-//         //     .expect_owned(true);
+    //         // // or
+    //         // let expr = or(ident("one"), ident("two"));
+    //         // expr.test([("one", false.into()), ("two", true.into())])
+    //         //     .expect_owned(true);
 
-//         // let expr = or(ident("one"), ident("two"));
-//         // expr.test([("one", true.into()), ("two", false.into())])
-//         //     .expect_owned(true);
+    //         // let expr = or(ident("one"), ident("two"));
+    //         // expr.test([("one", true.into()), ("two", false.into())])
+    //         //     .expect_owned(true);
 
-//         // let expr = or(ident("one"), ident("two"));
-//         // expr.test([("one", false.into()), ("two", false.into())])
-//         //     .expect_owned(false);
+    //         // let expr = or(ident("one"), ident("two"));
+    //         // expr.test([("one", false.into()), ("two", false.into())])
+    //         //     .expect_owned(false);
 
-//         // // and
-//         // let expr = and(ident("one"), ident("two"));
-//         // expr.test([("one", true.into()), ("two", true.into())])
-//         //     .expect_owned(true);
+    //         // // and
+    //         // let expr = and(ident("one"), ident("two"));
+    //         // expr.test([("one", true.into()), ("two", true.into())])
+    //         //     .expect_owned(true);
 
-//         // let expr = and(ident("one"), ident("two"));
-//         // expr.test([("one", false.into()), ("two", true.into())])
-//         //     .expect_owned(false);
+    //         // let expr = and(ident("one"), ident("two"));
+    //         // expr.test([("one", false.into()), ("two", true.into())])
+    //         //     .expect_owned(false);
 
-//         // let expr = and(ident("one"), ident("two"));
-//         // expr.test([("one", true.into()), ("two", false.into())])
-//         //     .expect_owned(false);
-//     }
+    //         // let expr = and(ident("one"), ident("two"));
+    //         // expr.test([("one", true.into()), ("two", false.into())])
+    //         //     .expect_owned(false);
+    //     }
 
-//     #[test]
-//     fn path() {
-//         panic!()
-//         // let test = dot(ident("inner"), ident("name")).test([]);
-//         // let name = test.eval().unwrap();
-//         // assert!(matches!(name, ValueRef::Str("Fiddle McStick")));
-//     }
+    //     #[test]
+    //     fn path() {
+    //         panic!()
+    //         // let test = dot(ident("inner"), ident("name")).test([]);
+    //         // let name = test.eval().unwrap();
+    //         // assert!(matches!(name, ValueRef::Str("Fiddle McStick")));
+    //     }
 
-//     #[test]
-//     fn string() {
-//         let expr = list(vec![strlit("Mr. "), dot(ident("inner"), ident("name"))]);
-//         // let string = expr.test(]).eval_string().unwrap();
-//         // assert_eq!(string, "Mr. Fiddle McStick");
-//     }
+    //     #[test]
+    //     fn string() {
+    //         let expr = list(vec![strlit("Mr. "), dot(ident("inner"), ident("name"))]);
+    //         // let string = expr.test(]).eval_string().unwrap();
+    //         // assert_eq!(string, "Mr. Fiddle McStick");
+    //     }
 }

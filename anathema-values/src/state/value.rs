@@ -81,14 +81,11 @@ where
     }
 }
 
-// impl<'a, T: std::fmt::Debug> From<&'a StateValue<List<T>>> for ValueRef<'a>
-// where
-//     for<'b> ValueRef<'b>: From<&'b T>,
-// {
-//     fn from(value: &'a StateValue<List<T>>) -> Self {
-//         Self::List(&value.inner)
-//     }
-// }
+impl<T: State> State for StateValue<T> {
+    fn get(&self, key: &Path, node_id: Option<&NodeId>) -> ValueRef<'_> {
+        self.inner.get(key, node_id)
+    }
+}
 
 #[cfg(test)]
 mod test {

@@ -2,8 +2,8 @@ use std::cell::RefCell;
 use std::fmt::Debug;
 use std::ops::Deref;
 
-use crate::{Change, Collection, NodeId, Path, StateValue, ValueRef, DIRTY_NODES};
 use crate::state::State;
+use crate::{Change, Collection, NodeId, Path, StateValue, ValueRef, DIRTY_NODES};
 
 #[derive(Debug)]
 pub struct List<T> {
@@ -75,9 +75,18 @@ impl<T> List<T> {
     }
 }
 
+impl<T: Debug> List<T>
+where
+    for<'a> &'a T: Into<ValueRef<'a>>,
+{
+    pub fn __anathema_get_value(&self, node_id: Option<&NodeId>) -> ValueRef<'_> {
+        ValueRef::List(self)
+    }
+}
+
 impl<T: Debug> Collection for List<T>
 where
-    for<'a> &'a T: Into<ValueRef<'a>>
+    for<'a> &'a T: Into<ValueRef<'a>>,
 {
     fn len(&self) -> usize {
         self.inner.len()
@@ -86,12 +95,14 @@ where
 
 impl<T> State for List<T>
 where
-    for<'a> &'a T: Into<ValueRef<'a>>
+    for<'a> &'a T: Into<ValueRef<'a>>,
 {
     fn get(&self, key: &Path, node_id: Option<&NodeId>) -> ValueRef<'_> {
         match key {
             Path::Index(index) => {
-                let Some(value) = self.inner.get(*index) else { return ValueRef::Empty };
+                let Some(value) = self.inner.get(*index) else {
+                    return ValueRef::Empty;
+                };
                 if let Some(node_id) = node_id.cloned() {
                     value.subscribe(node_id);
                 }

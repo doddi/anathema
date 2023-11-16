@@ -116,9 +116,10 @@ impl<'e> LoopNode<'e> {
             Collection::Path(ref path) => context.lookup(path),
             Collection::State { len, .. } if len == self.value_index => return None,
             Collection::State { ref path, .. } => {
+                let pa = path.to_string();
                 let path = path.compose(self.value_index);
                 self.value_index += 1;
-                let s = path.to_string();
+                let pb = path.to_string();
                 ValueRef::Deferred(path)
             }
             Collection::Empty => return None,

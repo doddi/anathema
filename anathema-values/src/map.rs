@@ -1,10 +1,10 @@
 use std::cell::RefCell;
-use std::ops::Deref;
 use std::fmt::Debug;
+use std::ops::Deref;
 
-use crate::state::State;
 use crate::hashmap::HashMap;
-use crate::{Owned, Path, StateValue, NodeId, DIRTY_NODES, Change, Collection, ValueRef};
+use crate::state::State;
+use crate::{Change, Collection, NodeId, Owned, Path, StateValue, ValueRef, DIRTY_NODES};
 
 #[derive(Debug)]
 pub struct Map<T> {
@@ -34,7 +34,11 @@ impl<T> Map<T> {
     pub fn remove(&mut self, key: String) -> Option<StateValue<T>> {
         let ret = self.inner.remove(&key);
         for s in self.subscribers.borrow().iter() {
-            DIRTY_NODES.with(|nodes| nodes.borrow_mut().push((s.clone(), Change::RemoveKey(key.clone()))));
+            DIRTY_NODES.with(|nodes| {
+                nodes
+                    .borrow_mut()
+                    .push((s.clone(), Change::RemoveKey(key.clone())))
+            });
         }
         ret
     }
@@ -42,30 +46,43 @@ impl<T> Map<T> {
     pub fn insert(&mut self, key: String, value: T) {
         self.inner.insert(key.clone(), StateValue::new(value));
         for s in self.subscribers.borrow().iter() {
-            DIRTY_NODES.with(|nodes| nodes.borrow_mut().push((s.clone(), Change::InsertKey(key.clone()))));
+            DIRTY_NODES.with(|nodes| {
+                nodes
+                    .borrow_mut()
+                    .push((s.clone(), Change::InsertKey(key.clone())))
+            });
         }
     }
+}
 
+impl<T: Debug> Map<T>
+where
+    for<'a> &'a T: Into<ValueRef<'a>>,
+{
+    pub fn __anathema_get_value(&self, node_id: Option<&NodeId>) -> ValueRef<'_> {
+        ValueRef::Map(self)
+    }
 }
 
 impl<T: Debug> Collection for Map<T>
 where
-    for<'a> &'a T: Into<ValueRef<'a>>
+    for<'a> &'a T: Into<ValueRef<'a>>,
 {
     fn len(&self) -> usize {
         self.inner.len()
     }
 }
 
-
 impl<T> State for Map<T>
 where
-    for<'a> &'a T: Into<ValueRef<'a>>
+    for<'a> &'a T: Into<ValueRef<'a>>,
 {
     fn get(&self, key: &Path, node_id: Option<&NodeId>) -> ValueRef<'_> {
         match key {
             Path::Key(key) => {
-                let Some(value) = self.inner.get(key) else { return ValueRef::Empty };
+                let Some(value) = self.inner.get(key) else {
+                    return ValueRef::Empty;
+                };
                 if let Some(node_id) = node_id.cloned() {
                     value.subscribe(node_id);
                 }

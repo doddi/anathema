@@ -82,8 +82,6 @@ impl<T> Value<T> {
     }
 }
 
-// TODO: move the default into it's own impl block, so it
-//       only applies to T: Default
 impl<T: Default + Copy> Value<T> {
     pub fn value(&self) -> Option<T> {
         match self {
@@ -91,15 +89,6 @@ impl<T: Default + Copy> Value<T> {
             &Self::Dyn { inner, .. } => inner,
             _ => None,
         }
-    }
-
-    pub fn value_or_default(&self) -> T {
-        match self {
-            Self::Static(val) => Some(*val),
-            &Self::Dyn { inner, .. } => inner,
-            _ => None,
-        }
-        .unwrap_or_else(T::default)
     }
 
     pub fn value_or(&self, default: T) -> T {
@@ -121,6 +110,17 @@ impl<T: Default + Copy> Value<T> {
             _ => None,
         }
         .unwrap_or_else(default)
+    }
+}
+
+impl<T: Default + Copy> Value<T> {
+    pub fn value_or_default(&self) -> T {
+        match self {
+            Self::Static(val) => Some(*val),
+            &Self::Dyn { inner, .. } => inner,
+            _ => None,
+        }
+        .unwrap_or_else(T::default)
     }
 }
 

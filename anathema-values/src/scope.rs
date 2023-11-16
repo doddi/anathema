@@ -100,6 +100,7 @@ impl<'a, 'expr> Context<'a, 'expr> {
 
     // TODO maybe get rid of this if we can make the state return a collection
     pub fn resolve_collection(&self, path: &Path, node_id: Option<&NodeId>) -> ValueRef<'_> {
+        eprintln!("{}", path.to_string());
         match self.scopes.lookup(path) {
             ValueRef::Empty => self.state.get(path, node_id),
             val => val,

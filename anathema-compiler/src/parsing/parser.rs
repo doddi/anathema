@@ -371,6 +371,8 @@ impl<'src, 'consts> Parser<'src, 'consts> {
             Kind::Newline
             | Kind::Value(Value::String(_))
             | Kind::Value(Value::Ident(_))
+            | Kind::Op(Operator::Minus)
+            | Kind::Op(Operator::LParen)
             | Kind::Op(Operator::LBracket)
             | Kind::Op(Operator::LCurly)
             | Kind::Eof => {}
