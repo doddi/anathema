@@ -205,7 +205,7 @@ impl<'a, 'expr> ValueResolver<'expr> for Resolver<'a, 'expr> {
             ValueExpr::Index(lhs, index) => {
                 // lhs can only be either an ident or an index
                 let lhs = self.resolve_path(lhs)?;
-                let index = self.resolve_path(index)?;
+                let index = self.resolve_number(index)?.to_usize();
                 Some(lhs.compose(index))
             }
             ValueExpr::Dot(lhs, rhs) => {
@@ -384,13 +384,14 @@ impl ValueExpr {
                 let path = lhs.compose(rhs);
                 resolver.lookup_path(&path)
             }
-            Self::Index(_lhs, _index) => {
-                // TODO: index lookup
-                panic!("not quite there...");
-                // let lhs = lhs.eval_path(context);
-                // let index = index.eval_num(context);
-                // let path = lhs.compose(index);
-                // context.lookup(&path)
+            Self::Index(lhs, index) => {
+                let lhs = none_to_empty!(resolver.resolve_path(lhs));
+                let ValueRef::Deferred(lhs) = resolver.lookup_path(&lhs) else {
+                    panic!()
+                };
+                let index = none_to_empty!(resolver.resolve_number(index)).to_usize();
+                let path = lhs.compose(index);
+                resolver.lookup_path(&path)
             }
 
             // -----------------------------------------------------------------------------
