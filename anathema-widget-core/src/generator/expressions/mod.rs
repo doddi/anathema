@@ -135,7 +135,7 @@ impl Loop {
                         }
                         _ => Collection::Empty,
                     },
-                    None => Collection::Empty,
+                    None => unreachable!("the deferred resolver should always resolve a path"),
                 }
             }
             _ => Collection::Empty,

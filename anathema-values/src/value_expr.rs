@@ -50,10 +50,9 @@ impl<'a, 'expr> ValueResolver<'expr> for Deferred<'a, 'expr> {
         match value {
             ValueExpr::Ident(path) => Some(Path::from(&**path)),
             ValueExpr::Index(lhs, index) => {
-                eprintln!("{lhs:?}");
                 // lhs can only be either an ident or an index
                 let lhs = self.resolve_path(lhs)?;
-                let index = self.resolve_path(index)?;
+                let index = self.resolve_number(index)?.to_usize();
                 Some(lhs.compose(index))
             }
             ValueExpr::Dot(lhs, rhs) => {
