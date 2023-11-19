@@ -1,6 +1,6 @@
 use anathema_values::{Attributes, Path, ValueExpr};
 
-use crate::generator::{ControlFlow, ElseExpr, Expression, IfExpr, Loop, SingleNode};
+use crate::generator::{ControlFlow, ElseExpr, Expression, IfExpr, LoopExpr, SingleNode};
 
 pub fn expression(
     ident: impl Into<String>,
@@ -22,7 +22,7 @@ pub(crate) fn for_expression(
     collection: Box<ValueExpr>,
     body: impl Into<Vec<Expression>>,
 ) -> Expression {
-    Expression::Loop(Loop {
+    Expression::Loop(LoopExpr {
         body: body.into().into(),
         binding: binding.into(),
         collection: *collection,

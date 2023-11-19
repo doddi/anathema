@@ -65,7 +65,8 @@ impl<'a, 'expr> ValueResolver<'expr> for Deferred<'a, 'expr> {
     }
 
     fn lookup_path(&mut self, path: &Path) -> ValueRef<'expr> {
-        self.context.lookup(path)
+        panic!("this impl of lookup_path should only look in the scopes")
+        // self.context.lookup(path)
     }
 }
 
@@ -133,10 +134,6 @@ impl<'a, 'expr> Resolver<'a, 'expr> {
     {
         let mut output = SmallVec::<[T; 4]>::new();
 
-        // let Some(value) = value.eval(self) else {
-        //     return output;
-        // };
-
         let value = value.eval(self);
 
         let value = match value {
@@ -191,6 +188,7 @@ impl<'a, 'expr> ValueResolver<'expr> for Resolver<'a, 'expr> {
     fn resolve_bool(&mut self, value: &'expr ValueExpr) -> bool {
         match value.eval(self) {
             ValueRef::Deferred(path) => {
+                let val = self.lookup_path(&path);
                 self.is_deferred = true;
                 self.context.state.get(&path, self.node_id).is_true()
             }
@@ -217,11 +215,10 @@ impl<'a, 'expr> ValueResolver<'expr> for Resolver<'a, 'expr> {
     }
 
     fn lookup_path(&mut self, path: &Path) -> ValueRef<'expr> {
-        // TODO: This should not be the same as the deferred resolver.
-        //       Look at the code for dot resolution inside the ValueExpr::eval
-        //
-        //       This lookup should not be able to return a deferred value
-        self.context.lookup(path)
+        match self.context.scopes.lookup(path) {
+            ValueRef::Empty => ValueRef::Deferred(path.clone()),
+            val => val,
+        }
     }
 }
 
@@ -376,18 +373,12 @@ impl ValueExpr {
             Self::Ident(path) => resolver.lookup_path(&Path::from(&**path)),
             Self::Dot(lhs, rhs) => {
                 let lhs = none_to_empty!(resolver.resolve_path(lhs));
-                let ValueRef::Deferred(lhs) = resolver.lookup_path(&lhs) else {
-                    panic!()
-                };
                 let rhs = none_to_empty!(resolver.resolve_path(rhs));
                 let path = lhs.compose(rhs);
                 resolver.lookup_path(&path)
             }
             Self::Index(lhs, index) => {
                 let lhs = none_to_empty!(resolver.resolve_path(lhs));
-                let ValueRef::Deferred(lhs) = resolver.lookup_path(&lhs) else {
-                    panic!()
-                };
                 let index = none_to_empty!(resolver.resolve_number(index)).to_usize();
                 let path = lhs.compose(index);
                 resolver.lookup_path(&path)

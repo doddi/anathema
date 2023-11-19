@@ -1,7 +1,7 @@
 use anathema_compiler::{Constants, Instruction, StringId};
 use anathema_values::{Attributes, ValueExpr};
 use anathema_widget_core::generator::{
-    ControlFlow, ElseExpr, Expression, IfExpr, Loop, SingleNode,
+    ControlFlow, ElseExpr, Expression, IfExpr, LoopExpr, SingleNode,
 };
 
 use crate::error::Result;
@@ -48,7 +48,7 @@ impl<'vm> Scope<'vm> {
 
                     let body = self.instructions.drain(..size).collect();
                     let body = Scope::new(body, &self.consts).exec()?;
-                    let template = Expression::Loop(Loop {
+                    let template = Expression::Loop(LoopExpr {
                         binding: binding.into(),
                         collection,
                         body,

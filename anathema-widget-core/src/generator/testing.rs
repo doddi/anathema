@@ -6,7 +6,7 @@ use super::nodes::Node;
 use super::{ControlFlow, ElseExpr, IfExpr};
 use crate::contexts::{LayoutCtx, PositionCtx};
 use crate::error::Result;
-use crate::generator::expressions::{Expression, Loop, SingleNode};
+use crate::generator::expressions::{Expression, LoopExpr, SingleNode};
 use crate::layout::{Constraints, Layout, Layouts};
 use crate::{AnyWidget, Factory, FactoryContext, Nodes, Padding, Widget, WidgetFactory};
 

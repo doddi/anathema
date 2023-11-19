@@ -47,7 +47,7 @@ impl<'a, 'expr> Scopes<'a, 'expr> {
         }
     }
 
-    fn lookup(&self, path: &Path) -> ValueRef<'expr> {
+    pub(crate) fn lookup(&self, path: &Path) -> ValueRef<'expr> {
         match self.scope.lookup(path) {
             ValueRef::Empty => self
                 .parent
@@ -89,23 +89,14 @@ impl<'a, 'expr> Context<'a, 'expr> {
         self.scopes.scope.clone()
     }
 
-    /// Lookup a value, if the value belongs to the state it returns a deferred value
-    /// instead, to be resolved at a later stage.
-    pub fn lookup(&self, path: &Path) -> ValueRef<'expr> {
-        match self.scopes.lookup(path) {
-            ValueRef::Empty => ValueRef::Deferred(path.clone()),
-            val => val,
-        }
-    }
-
-    // TODO maybe get rid of this if we can make the state return a collection
-    pub fn resolve_collection(&self, path: &Path, node_id: Option<&NodeId>) -> ValueRef<'_> {
-        eprintln!("{}", path.to_string());
-        match self.scopes.lookup(path) {
-            ValueRef::Empty => self.state.get(path, node_id),
-            val => val,
-        }
-    }
+    // // TODO maybe get rid of this if we can make the state return a collection
+    // pub fn resolve_collection(&self, path: &Path, node_id: Option<&NodeId>) -> ValueRef<'_> {
+    //     eprintln!("{}", path.to_string());
+    //     match self.scopes.lookup(path) {
+    //         ValueRef::Empty => self.state.get(path, node_id),
+    //         val => val,
+    //     }
+    // }
 }
 
 #[cfg(test)]

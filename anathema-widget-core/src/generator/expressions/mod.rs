@@ -1,7 +1,7 @@
 use anathema_render::Size;
 use anathema_values::{
-    Attributes, Context, Deferred, DynValue, NodeId, Path, State, ValueExpr, ValueRef,
-    ValueResolver,
+    Attributes, Context, Deferred, DynValue, NodeId, Path, Resolver, State, Value, ValueExpr,
+    ValueRef, ValueResolver,
 };
 
 pub use self::controlflow::{ElseExpr, IfExpr};
@@ -74,17 +74,20 @@ impl SingleNode {
 //   - Loop -
 // -----------------------------------------------------------------------------
 #[derive(Debug)]
-pub struct Loop {
+pub struct LoopExpr {
     pub body: Vec<Expression>,
     pub binding: Path,
     pub collection: ValueExpr,
 }
 
 #[derive(Debug)]
-pub enum Collection<'e> {
-    ValueExpressions(&'e [ValueExpr]),
-    State { len: usize, path: Path },
-    Path(Path),
+pub(in crate::generator) enum Collection<'e> {
+    Static(&'e [ValueExpr]),
+    State {
+        len: usize,
+        path: Option<Path>,
+        expr: ValueExpr,
+    },
     Empty,
 }
 
@@ -112,34 +115,81 @@ impl<'e> Collection<'e> {
     }
 }
 
-impl Loop {
+impl LoopExpr {
     fn eval<'e>(&'e self, context: &Context<'_, 'e>, node_id: NodeId) -> Result<Node<'e>> {
+        // Need to know if this is a collection or a path
         let collection = match &self.collection {
-            ValueExpr::List(expr) => Collection::ValueExpressions(expr),
-            ValueExpr::Ident(_) | ValueExpr::Dot(..) | ValueExpr::Index(..) => {
-                let mut resolver = Deferred::new(context);
-                match resolver.resolve_path(&self.collection) {
-                    Some(path) => match context.resolve_collection(&path, Some(&node_id)) {
-                        ValueRef::List(col) => Collection::State {
-                            len: col.len(),
-                            path,
-                        },
-                        ValueRef::Deferred(inner_path) => {
-                            match context.resolve_collection(&inner_path, Some(&node_id)) {
-                                ValueRef::List(col) => Collection::State {
-                                    len: col.len(),
-                                    path: inner_path,
-                                },
-                                _ => Collection::Empty,
-                            }
-                        }
-                        _ => Collection::Empty,
+            ValueExpr::List(list) => Collection::Static(list),
+            col => {
+                let mut resolver = Resolver::new(context, Some(&node_id));
+                let path = resolver.resolve_path(col);
+                let len = match path {
+                    Some(ref path) => match context.state.get(path, Some(&node_id)) {
+                        ValueRef::List(list) => list.len(),
+                        _ => 0,
                     },
-                    None => unreachable!("the deferred resolver should always resolve a path"),
+                    None => 0,
+                };
+
+                Collection::State {
+                    path,
+                    len,
+                    expr: self.collection.clone(),
                 }
             }
-            _ => Collection::Empty,
         };
+
+        //let collection = match &self.collection {
+        //    ValueExpr::List(expr) => Collection::Static(expr),
+        //    value => {
+        //        let mut resolver = Resolver::new(context, Some(&node_id));
+        //        match resolver.resolve_path(value) {
+        //            Some(path) => {
+        //                match resolver.lookup_path(&path) {
+        //                    // ValueRef::List(col) => Collection::State {
+        //                    //     len: col.len(),
+        //                    //     path,
+        //                    // },
+        //                    _ => Collection::Empty,
+        //                }
+        //            }
+        //            None => Collection::Empty,
+        //        }
+        //    } // Old hat:
+        //      //ValueExpr::Ident(_) | ValueExpr::Dot(..) | ValueExpr::Index(..) => {
+        //      //    let mut resolver = Resolver::new(context);
+        //      //    match self.collection.eval(&mut resolver) {
+        //      //        ValueRef::Expressions(expressions) => Collection::ValueExpressions(expressions),
+        //      //        ValueRef::List(collection) => Collection::State {
+        //      //            len: collection.len(),
+        //      //            path,
+        //      //        }
+        //      //        _ => Collection::Empty,
+        //      //    }
+
+        //      //    //
+        //      //    match resolver.resolve_path(&self.collection) {
+        //      //        Some(path) => match context.resolve_collection(&path, Some(&node_id)) {
+        //      //            ValueRef::List(col) => Collection::State {
+        //      //                len: col.len(),
+        //      //                path,
+        //      //            },
+        //      //            ValueRef::Deferred(inner_path) => {
+        //      //                match context.resolve_collection(&inner_path, Some(&node_id)) {
+        //      //                    ValueRef::List(col) => Collection::State {
+        //      //                        len: col.len(),
+        //      //                        path: inner_path,
+        //      //                    },
+        //      //                    _ => Collection::Empty,
+        //      //                }
+        //      //            }
+        //      //            _ => Collection::Empty,
+        //      //        },
+        //      //        None => unreachable!("the deferred resolver should always resolve a path"),
+        //      //    }
+        //      //}
+        //      //_ => Collection::Empty,
+        //};
 
         let loop_node = LoopNode::new(
             &self.body,
@@ -189,7 +239,7 @@ impl ControlFlow {
 #[derive(Debug)]
 pub enum Expression {
     Node(SingleNode),
-    Loop(Loop),
+    Loop(LoopExpr),
     ControlFlow(ControlFlow),
 }
 
