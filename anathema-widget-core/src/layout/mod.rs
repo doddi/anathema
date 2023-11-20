@@ -166,20 +166,20 @@ impl TryFrom<ValueRef<'_>> for Align {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug)]
 pub enum HorzEdge {
     /// Position to the left
-    Left(i32),
+    Left(Value<i32>),
     /// Position to the right
-    Right(i32),
+    Right(Value<i32>),
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug)]
 pub enum VertEdge {
     /// Position at the top
-    Top(i32),
+    Top(Value<i32>),
     /// Position at the bottom
-    Bottom(i32),
+    Bottom(Value<i32>),
 }
 
 /// Axis

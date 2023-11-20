@@ -25,12 +25,10 @@ impl State for Box<dyn State> {
 /// doesn't implement `State` (otherwise non StateValue<T>s would fail to compile)
 pub trait BlanketGet {
     fn __anathema_get_value(&self, node_id: Option<&NodeId>) -> ValueRef<'static> {
-        eprintln!("don't do this");
         ValueRef::Empty
     }
 
     fn __anathema_get<'a>(&self, key: &'a Path, node_id: Option<&NodeId>) -> ValueRef<'static> {
-        eprintln!("don't do this either: {}", key.to_string());
         ValueRef::Empty
     }
 

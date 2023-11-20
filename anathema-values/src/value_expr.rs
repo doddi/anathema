@@ -36,7 +36,6 @@ impl<'a, 'expr> Deferred<'a, 'expr> {
     pub fn resolve(&mut self, value: &'expr ValueExpr) -> ValueRef<'expr> {
         value.eval(self)
     }
-
 }
 
 impl<'a, 'expr> ValueResolver<'expr> for Deferred<'a, 'expr> {
@@ -105,7 +104,6 @@ impl<'state, 'expr> Resolver<'state, 'expr> {
             val => val,
         }
     }
-
 
     pub fn is_deferred(&self) -> bool {
         self.is_deferred
@@ -475,11 +473,11 @@ mod test {
         expr.test().expect_owned(-3);
     }
 
-    //     #[test]
-    //     fn sub_static() {
-    //         let expr = sub(unum(10), unum(2));
-    //         expr.test([]).expect_owned(8u8);
-    //     }
+    #[test]
+    fn sub_static() {
+        let expr = sub(unum(10), unum(2));
+        expr.test().expect_owned(8u8);
+    }
 
     //     #[test]
     //     fn mul_static() {

@@ -136,6 +136,7 @@ impl TestState {
 #[derive(Debug)]
 pub struct TestExpression<T> {
     pub state: Map<T>,
+    scope: LocalScope<'static>,
     pub expr: Box<ValueExpr>,
 }
 
@@ -143,12 +144,12 @@ impl<T> TestExpression<T>
 where
     for<'a> &'a T: Into<ValueRef<'a>>,
 {
-    pub fn eval(&self) -> ValueRef<'_> {
-        let scope = LocalScope::empty();
-        let context = Context::new(&self.state, &scope);
+    pub fn eval<'a>(&'a self) -> ValueRef<'a> {
+        let context = Context::new(&self.state, &self.scope);
         let mut resolver = Resolver::new(&context, None);
+        let x = resolver.resolve(&self.expr);
+        // x
         panic!()
-        // resolver.resolve(&self.expr)
     }
 
     pub fn eval_string(&self) -> Option<String> {
@@ -175,6 +176,7 @@ impl ValueExpr {
         TestExpression {
             state: Map::new(inner),
             expr: Box::new(self),
+            scope: LocalScope::empty()
         }
     }
 
@@ -182,6 +184,7 @@ impl ValueExpr {
         TestExpression {
             state: Map::empty(),
             expr: Box::new(self),
+            scope: LocalScope::empty()
         }
     }
 }
