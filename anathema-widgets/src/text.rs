@@ -136,8 +136,6 @@ impl Widget for Text {
             .map(|wrap| self.layout.set_wrap(*wrap));
         self.layout.process(self.text.str());
 
-        let babies = children.count();
-
         children.for_each(data, layout, |span, inner_children, data| {
             // Ignore any widget that isn't a span
             if span.kind() != TextSpan::KIND {

@@ -4,7 +4,7 @@ use crate::map::Map;
 use crate::state::State;
 use crate::{
     Collection, Context, List, LocalScope, NodeId, Owned, Path, Resolver, StateValue, ValueExpr,
-    ValueRef,
+    ValueRef, ValueResolver,
 };
 
 #[derive(Debug, crate::State)]
@@ -147,7 +147,8 @@ where
         let scope = LocalScope::empty();
         let context = Context::new(&self.state, &scope);
         let mut resolver = Resolver::new(&context, None);
-        self.expr.eval(&mut resolver)
+        panic!()
+        // resolver.resolve(&self.expr)
     }
 
     pub fn eval_string(&self) -> Option<String> {

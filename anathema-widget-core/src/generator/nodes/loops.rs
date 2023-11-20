@@ -72,6 +72,7 @@ impl<'e> LoopNode<'e> {
                 return Ok(ControlFlow::Continue(()));
             };
 
+            let v = format!("{value:?}");
             let scope = LocalScope::new(self.binding.clone(), value);
             let context = context.reparent(&scope);
 
@@ -106,22 +107,25 @@ impl<'e> LoopNode<'e> {
         self.iterations.iter().map(|i| i.body.count()).sum()
     }
 
-    pub(super) fn next_value(&mut self, context: &Context<'_, 'e>) -> Option<ValueRef<'e>> {
+    fn next_value(&mut self, context: &Context<'_, 'e>) -> Option<ValueRef<'e>> {
         let val = match self.collection {
             Collection::Static(expressions) => {
                 let value = expressions.get(self.value_index)?;
                 self.value_index += 1;
-                value.eval(&mut Deferred::new(context))
+                Deferred::new(context).resolve(&value)
+                // value.eval(&mut Deferred::new(context))
             }
             Collection::State { len, .. } if len == self.value_index => return None,
             Collection::State { ref path, .. } => {
                 let path = path.as_ref()?.compose(self.value_index);
+                let p = path.to_string();
                 self.value_index += 1;
                 ValueRef::Deferred(path)
             }
             Collection::Empty => return None,
             _ => panic!()
         };
+
         Some(val)
     }
 

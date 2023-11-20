@@ -38,9 +38,7 @@ impl<'e> Node<'e> {
                 f(widget, children, context)?;
                 Ok(ControlFlow::Continue(()))
             }
-            NodeKind::Loop(loop_state) => {
-                loop_state.next(context, layout, f)
-            }
+            NodeKind::Loop(loop_state) => loop_state.next(context, layout, f),
             NodeKind::ControlFlow(if_else) => {
                 let Some(body) = if_else.body_mut() else {
                     return Ok(ControlFlow::Break(()));
@@ -124,16 +122,12 @@ pub struct Nodes<'e> {
 }
 
 impl<'e> Nodes<'e> {
-    // pub fn reset(&mut self) {
-    //     self.expr_index = 0;
-    // }
-
     fn new_node(&mut self, context: &Context<'_, 'e>) -> Option<Result<()>> {
         let expr = self.expressions.get(self.expr_index)?;
         self.expr_index += 1;
         match expr.eval(&context, self.next_id.next()) {
             Ok(node) => self.inner.push(node),
-            Err(e) => return Some(Err(e))
+            Err(e) => return Some(Err(e)),
         };
         Some(Ok(()))
     }
@@ -276,11 +270,8 @@ mod test {
     use anathema_values::testing::{ident, list};
     use anathema_values::ValueExpr;
 
-    
     use crate::generator::testing::*;
-    use crate::testing::{if_expression, expression, for_expression};
-    
-    
+    use crate::testing::{expression, for_expression, if_expression};
 
     #[test]
     fn generate_a_single_widget() {

@@ -60,6 +60,9 @@ where
     for<'a> &'a T: Into<ValueRef<'a>>,
 {
     pub fn __anathema_get_value(&self, node_id: Option<&NodeId>) -> ValueRef<'_> {
+        if let Some(node_id) = node_id.cloned() {
+            self.subscribe(node_id);
+        }
         ValueRef::Map(self)
     }
 }

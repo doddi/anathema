@@ -2,7 +2,7 @@ use std::fmt::Display;
 
 use anathema_render::{Size, Style};
 use anathema_values::{
-    impl_dyn_value, Attributes, Context, DynValue, NodeId, Resolver, Value, ValueExpr, ValueRef,
+    impl_dyn_value, Attributes, Context, DynValue, NodeId, Resolver, ValueResolver, Value, ValueExpr, ValueRef,
 };
 use anathema_widget_core::contexts::{LayoutCtx, PaintCtx, PositionCtx, WithSize};
 use anathema_widget_core::error::Result;

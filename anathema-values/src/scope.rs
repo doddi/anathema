@@ -58,27 +58,34 @@ impl<'a, 'expr> Scopes<'a, 'expr> {
     }
 }
 
-pub struct Context<'a, 'expr> {
-    pub state: &'a dyn State,
-    pub scopes: Scopes<'a, 'expr>,
+pub struct Context<'state, 'expr> {
+    pub state: &'state dyn State,
+    pub scopes: Scopes<'state, 'expr>,
 }
 
-impl<'a, 'expr> Context<'a, 'expr> {
-    pub fn root(state: &'a dyn State) -> Self {
+impl<'state, 'expr> Context<'state, 'expr> {
+    pub fn root(state: &'state dyn State) -> Self {
         Self::new(state, &LocalScope::Empty)
     }
 
-    pub fn new(state: &'a dyn State, scope: &'a LocalScope<'expr>) -> Self {
+    pub fn new(state: &'state dyn State, scope: &'state LocalScope<'expr>) -> Self {
         Self {
             state,
             scopes: Scopes::new(scope),
         }
     }
 
-    pub fn reparent(&'a self, scope: &'a LocalScope<'expr>) -> Context<'a, 'expr> {
+    pub fn reparent(&'state self, scope: &'state LocalScope<'expr>) -> Context<'state, 'expr> {
         Self {
             state: self.state,
             scopes: self.scopes.reparent(scope),
+        }
+    }
+
+    pub(crate) fn lookup_path(&self, path: &Path) -> ValueRef<'expr> {
+        match self.scopes.lookup(path) {
+            ValueRef::Empty => ValueRef::Deferred(path.clone()),
+            val => val,
         }
     }
 
@@ -88,15 +95,6 @@ impl<'a, 'expr> Context<'a, 'expr> {
     pub fn new_scope(&self) -> LocalScope<'expr> {
         self.scopes.scope.clone()
     }
-
-    // // TODO maybe get rid of this if we can make the state return a collection
-    // pub fn resolve_collection(&self, path: &Path, node_id: Option<&NodeId>) -> ValueRef<'_> {
-    //     eprintln!("{}", path.to_string());
-    //     match self.scopes.lookup(path) {
-    //         ValueRef::Empty => self.state.get(path, node_id),
-    //         val => val,
-    //     }
-    // }
 }
 
 #[cfg(test)]

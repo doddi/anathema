@@ -32,6 +32,14 @@ impl SingleNode {
 
         let scope = context.new_scope();
 
+        // TODO: remove this nonsense
+        // let mut resolver = Resolver::new(context, Some(&node_id));
+        // if let Some(text) = &self.text {
+        //     let path = resolver.resolve_path(text);
+        //     eprintln!("{:?}", path);
+        // }
+        // let text = format!("{:?}", self.text);
+
         let text = self
             .text
             .as_ref()
@@ -74,13 +82,6 @@ impl SingleNode {
 //   - Loop -
 // -----------------------------------------------------------------------------
 #[derive(Debug)]
-pub struct LoopExpr {
-    pub body: Vec<Expression>,
-    pub binding: Path,
-    pub collection: ValueExpr,
-}
-
-#[derive(Debug)]
 pub(in crate::generator) enum Collection<'e> {
     Static(&'e [ValueExpr]),
     State {
@@ -113,6 +114,13 @@ impl<'e> Collection<'e> {
             }
         }
     }
+}
+
+#[derive(Debug)]
+pub struct LoopExpr {
+    pub body: Vec<Expression>,
+    pub binding: Path,
+    pub collection: ValueExpr,
 }
 
 impl LoopExpr {

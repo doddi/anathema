@@ -35,7 +35,7 @@ pub enum ValueRef<'a> {
 impl<'a> ValueRef<'a> {
     pub fn is_true(&self) -> bool {
         match self {
-            Self::Str(s) => s.is_empty(),
+            Self::Str(s) => !s.is_empty(),
             Self::Owned(Owned::Bool(b)) => *b,
             Self::Owned(Owned::Num(Num::Unsigned(n))) => *n > 0,
             Self::Owned(Owned::Num(Num::Signed(n))) => *n > 0,

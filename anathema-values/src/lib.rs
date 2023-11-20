@@ -201,7 +201,7 @@ macro_rules! impl_dyn_value {
                 expr: &ValueExpr,
             ) -> Value<Self> {
                 let mut resolver = Resolver::new(context, node_id);
-                let inner = expr.eval(&mut resolver).try_into().ok();
+                let inner = resolver.resolve(&expr).try_into().ok();
 
                 match resolver.is_deferred() {
                     true => Value::Dyn {
@@ -222,8 +222,8 @@ macro_rules! impl_dyn_value {
             ) {
                 match value {
                     Value::Dyn { inner, expr } => {
-                        *inner = expr
-                            .eval(&mut Resolver::new(context, node_id))
+                        *inner = Resolver::new(context, node_id)
+                            .resolve(expr)
                             .try_into()
                             .ok()
                     }
@@ -234,7 +234,37 @@ macro_rules! impl_dyn_value {
     };
 }
 
-impl_dyn_value!(bool);
+impl DynValue for bool {
+    fn init_value(
+        context: &Context<'_, '_>,
+        node_id: Option<&NodeId>,
+        expr: &ValueExpr,
+    ) -> Value<Self> {
+        let mut resolver = Resolver::new(context, node_id);
+        let val = resolver.resolve(&expr);
+        match resolver.is_deferred() {
+            true => Value::Dyn {
+                inner: Some(val.is_true()),
+                expr: expr.clone(),
+            },
+            false => match val {
+                ValueRef::Empty => Value::Empty,
+                val => Value::Static(val.is_true()),
+            },
+        }
+    }
+
+    fn resolve(value: &mut Value<Self>, context: &Context<'_, '_>, node_id: Option<&NodeId>) {
+        match value {
+            Value::Dyn { inner, expr } => {
+                let mut resolver = Resolver::new(context, node_id);
+                *inner = Some(resolver.resolve(&expr).is_true())
+            }
+            _ => {}
+        }
+    }
+}
+
 impl_dyn_value!(anathema_render::Color);
 
 impl_dyn_value!(usize);

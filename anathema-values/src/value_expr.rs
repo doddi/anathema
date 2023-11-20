@@ -32,6 +32,11 @@ impl<'a, 'expr> Deferred<'a, 'expr> {
     pub fn new(context: &'a Context<'a, 'expr>) -> Self {
         Self { context }
     }
+
+    pub fn resolve(&mut self, value: &'expr ValueExpr) -> ValueRef<'expr> {
+        value.eval(self)
+    }
+
 }
 
 impl<'a, 'expr> ValueResolver<'expr> for Deferred<'a, 'expr> {
@@ -65,8 +70,7 @@ impl<'a, 'expr> ValueResolver<'expr> for Deferred<'a, 'expr> {
     }
 
     fn lookup_path(&mut self, path: &Path) -> ValueRef<'expr> {
-        panic!("this impl of lookup_path should only look in the scopes")
-        // self.context.lookup(path)
+        self.context.scopes.lookup(path)
     }
 }
 
@@ -74,20 +78,31 @@ impl<'a, 'expr> ValueResolver<'expr> for Deferred<'a, 'expr> {
 //   - Resolver -
 // -----------------------------------------------------------------------------
 /// Resolve the expression, including deferred values.
-pub struct Resolver<'a, 'expr> {
-    context: &'a Context<'a, 'expr>,
-    node_id: Option<&'a NodeId>,
+pub struct Resolver<'state, 'expr> {
+    context: &'state Context<'state, 'expr>,
+    node_id: Option<&'state NodeId>,
     is_deferred: bool,
 }
 
-impl<'a, 'expr> Resolver<'a, 'expr> {
-    pub fn new(context: &'a Context<'a, 'expr>, node_id: Option<&'a NodeId>) -> Self {
+impl<'state, 'expr> Resolver<'state, 'expr> {
+    pub fn new(context: &'state Context<'state, 'expr>, node_id: Option<&'state NodeId>) -> Self {
         Self {
             context,
             node_id,
             is_deferred: false,
         }
     }
+
+    pub fn resolve(&mut self, value: &'expr ValueExpr) -> ValueRef<'state> {
+        match value.eval(self) {
+            ValueRef::Deferred(path) => {
+                self.is_deferred = true;
+                self.context.state.get(&path, self.node_id)
+            }
+            val => val,
+        }
+    }
+
 
     pub fn is_deferred(&self) -> bool {
         self.is_deferred
@@ -116,6 +131,7 @@ impl<'a, 'expr> Resolver<'a, 'expr> {
                 match self.context.state.get(&path, self.node_id) {
                     ValueRef::Str(val) => Some(val.into()),
                     ValueRef::Owned(val) => Some(val.to_string()),
+                    ValueRef::Empty => None,
                     val => {
                         // TODO: panic...
                         panic!("don't panic here: {val:?}")
@@ -170,7 +186,7 @@ impl<'a, 'expr> Resolver<'a, 'expr> {
     }
 }
 
-impl<'a, 'expr> ValueResolver<'expr> for Resolver<'a, 'expr> {
+impl<'state, 'expr> ValueResolver<'expr> for Resolver<'state, 'expr> {
     fn resolve_number(&mut self, value: &'expr ValueExpr) -> Option<Num> {
         match value.eval(self) {
             ValueRef::Owned(Owned::Num(num)) => Some(num),
@@ -198,7 +214,14 @@ impl<'a, 'expr> ValueResolver<'expr> for Resolver<'a, 'expr> {
 
     fn resolve_path(&mut self, value: &'expr ValueExpr) -> Option<Path> {
         match value {
-            ValueExpr::Ident(path) => Some(Path::from(&**path)),
+            ValueExpr::Ident(path) => {
+                let path = Path::from(&**path);
+                match self.context.scopes.lookup(&path) {
+                    ValueRef::Deferred(path) => Some(path),
+                    ValueRef::Empty => Some(path),
+                    val => panic!("this should never be anythign but a deferred path: {val:?}"),
+                }
+            }
             ValueExpr::Index(lhs, index) => {
                 // lhs can only be either an ident or an index
                 let lhs = self.resolve_path(lhs)?;
@@ -216,7 +239,10 @@ impl<'a, 'expr> ValueResolver<'expr> for Resolver<'a, 'expr> {
 
     fn lookup_path(&mut self, path: &Path) -> ValueRef<'expr> {
         match self.context.scopes.lookup(path) {
-            ValueRef::Empty => ValueRef::Deferred(path.clone()),
+            ValueRef::Empty => {
+                self.is_deferred = true;
+                ValueRef::Deferred(path.clone())
+            }
             val => val,
         }
     }
@@ -303,7 +329,7 @@ macro_rules! none_to_empty {
 }
 
 impl ValueExpr {
-    pub fn eval<'e>(&'e self, resolver: &mut impl ValueResolver<'e>) -> ValueRef<'e> {
+    fn eval<'expr>(&'expr self, resolver: &mut impl ValueResolver<'expr>) -> ValueRef<'expr> {
         match self {
             Self::Owned(value) => ValueRef::Owned(*value),
             Self::String(value) => ValueRef::Str(&*value),
@@ -370,7 +396,10 @@ impl ValueExpr {
             // -----------------------------------------------------------------------------
             //   - Paths -
             // -----------------------------------------------------------------------------
-            Self::Ident(path) => resolver.lookup_path(&Path::from(&**path)),
+            Self::Ident(path) => {
+                let path = Path::from(&**path);
+                resolver.lookup_path(&path)
+            }
             Self::Dot(lhs, rhs) => {
                 let lhs = none_to_empty!(resolver.resolve_path(lhs));
                 let rhs = none_to_empty!(resolver.resolve_path(rhs));
@@ -391,21 +420,6 @@ impl ValueExpr {
             Self::Map(map) => ValueRef::ExpressionMap(map),
         }
     }
-
-    // pub fn list_usize<P>(&self, context: &Context<'_, '_>) -> Vec<usize> {
-    //     match self.eval_value_ref(context) {
-    //         Some(ValueRef::Expressions(list)) => list
-    //             .iter()
-    //             .filter_map(|value_expr| value_expr.eval_number(context))
-    //             .filter_map(|num| match num {
-    //                 Num::Signed(val) => Some(val as usize),
-    //                 Num::Unsigned(val) => Some(val as usize),
-    //                 Num::Float(_) => None,
-    //             })
-    //             .collect(),
-    //         _ => vec![],
-    //     }
-    // }
 }
 
 impl From<Box<ValueExpr>> for ValueExpr {

@@ -1,5 +1,5 @@
 use anathema_render::Size;
-use anathema_values::{impl_dyn_value, Resolver, Context, DynValue, NodeId, Value, ValueExpr, ValueRef};
+use anathema_values::{impl_dyn_value, Resolver, ValueResolver, Context, DynValue, NodeId, Value, ValueExpr, ValueRef};
 use unicode_width::UnicodeWidthChar;
 
 fn is_word_boundary(c: char) -> bool {
@@ -233,8 +233,12 @@ impl TextLayout {
     }
 
     pub fn size(&self) -> Size {
+        let width = self.longest_line.max(self.current_width);
+        if width == 0 {
+            return Size::ZERO;
+        }
         Size {
-            width: self.longest_line.max(self.current_width),
+            width,
             height: self.line_count,
         }
     }

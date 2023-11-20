@@ -1,4 +1,4 @@
-use anathema_values::{Change, Context, DynValue, NodeId, Value};
+use anathema_values::{Change, Context, DynValue, NodeId, Value, Resolver};
 
 use crate::generator::expressions::{ElseExpr, IfExpr};
 use crate::{Nodes, WidgetContainer};
@@ -123,8 +123,8 @@ impl<'e> IfElse<'e> {
 
 #[derive(Debug)]
 pub struct If<'e> {
-    pub cond: Value<bool>,
-    pub body: Nodes<'e>,
+    cond: Value<bool>,
+    body: Nodes<'e>,
     node_id: NodeId,
 }
 
@@ -140,8 +140,8 @@ impl If<'_> {
 
 #[derive(Debug)]
 pub struct Else<'e> {
-    pub cond: Option<Value<bool>>,
-    pub body: Nodes<'e>,
+    cond: Option<Value<bool>>,
+    body: Nodes<'e>,
     node_id: NodeId,
 }
 
