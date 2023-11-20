@@ -27,6 +27,7 @@ impl<'expr> LocalScope<'expr> {
     }
 }
 
+#[derive(Debug)]
 pub struct Scopes<'a, 'expr> {
     scope: &'a LocalScope<'expr>,
     parent: Option<&'a Scopes<'a, 'expr>>,

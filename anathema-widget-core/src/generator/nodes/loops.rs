@@ -113,11 +113,10 @@ impl<'e> LoopNode<'e> {
                 let value = expressions.get(self.value_index)?;
                 self.value_index += 1;
                 Deferred::new(context).resolve(&value)
-                // value.eval(&mut Deferred::new(context))
             }
             Collection::State { len, .. } if len == self.value_index => return None,
             Collection::State { ref path, .. } => {
-                let path = path.as_ref()?.compose(self.value_index);
+                let path = path.compose(self.value_index);
                 let p = path.to_string();
                 self.value_index += 1;
                 ValueRef::Deferred(path)

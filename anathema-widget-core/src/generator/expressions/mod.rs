@@ -86,7 +86,7 @@ pub(in crate::generator) enum Collection<'e> {
     Static(&'e [ValueExpr]),
     State {
         len: usize,
-        path: Option<Path>,
+        path: Path,
         expr: ValueExpr,
     },
     Empty,
@@ -129,21 +129,60 @@ impl LoopExpr {
         let collection = match &self.collection {
             ValueExpr::List(list) => Collection::Static(list),
             col => {
-                let mut resolver = Resolver::new(context, Some(&node_id));
-                let path = resolver.resolve_path(col);
-                let len = match path {
-                    Some(ref path) => match context.state.get(path, Some(&node_id)) {
-                        ValueRef::List(list) => list.len(),
-                        _ => 0,
-                    },
-                    None => 0,
-                };
+                let mut resolver = Deferred::new(context);
+                let val = resolver.resolve(col);
+                match val {
+                    ValueRef::Expressions(list) => Collection::Static(list),
+                    ValueRef::Deferred(path) => {
+                        // let before = path.to_string();
+                        // let path = resolver.resolve_path(col);
+                        // if let Some(path) = &path {
+                        //     let after = path.to_string();
+                        //     eprintln!("{after}");
+                        // }
+                        // let len = match path {
+                        //     Some(ref path) => match context.state.get(path, Some(&node_id)) {
+                        //         ValueRef::List(list) => list.len(),
+                        //         _ => 0,
+                        //     },
+                        //     None => 0,
+                        // };
 
-                Collection::State {
-                    path,
-                    len,
-                    expr: self.collection.clone(),
+                        let len = match context.state.get(&path, Some(&node_id)) {
+                            ValueRef::List(list) => list.len(),
+                            _ => 0,
+                        };
+
+                        Collection::State {
+                            path,
+                            len,
+                            expr: self.collection.clone(),
+                        }
+                    }
+                    _ => Collection::Empty,
                 }
+                // // ^^
+                // // If this is a list of expressions
+                // // then return Collection::Static(val)
+
+                // // let mut resolver = Resolver::new(context, Some(&node_id));
+
+                // // let x = format!("{:?}", context.scopes);
+
+                // let path = resolver.resolve_path(col);
+                // let len = match path {
+                //     Some(ref path) => match context.state.get(path, Some(&node_id)) {
+                //         ValueRef::List(list) => list.len(),
+                //         _ => 0,
+                //     },
+                //     None => 0,
+                // };
+
+                // Collection::State {
+                //     path,
+                //     len,
+                //     expr: self.collection.clone(),
+                // }
             }
         };
 

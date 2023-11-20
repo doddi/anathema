@@ -70,7 +70,10 @@ impl<'a, 'expr> ValueResolver<'expr> for Deferred<'a, 'expr> {
     }
 
     fn lookup_path(&mut self, path: &Path) -> ValueRef<'expr> {
-        self.context.scopes.lookup(path)
+        match self.context.scopes.lookup(path) {
+            ValueRef::Empty => ValueRef::Deferred(path.clone()),
+            val => val,
+        }
     }
 }
 
@@ -219,7 +222,9 @@ impl<'state, 'expr> ValueResolver<'expr> for Resolver<'state, 'expr> {
                 match self.context.scopes.lookup(&path) {
                     ValueRef::Deferred(path) => Some(path),
                     ValueRef::Empty => Some(path),
-                    val => panic!("this should never be anythign but a deferred path: {val:?}"),
+                    val => {
+                        panic!("this should never be anythign but a deferred path: {val:?}")
+                    }
                 }
             }
             ValueExpr::Index(lhs, index) => {
