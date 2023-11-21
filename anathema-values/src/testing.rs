@@ -147,9 +147,7 @@ where
     pub fn eval<'a>(&'a self) -> ValueRef<'a> {
         let context = Context::new(&self.state, &self.scope);
         let mut resolver = Resolver::new(&context, None);
-        let x = resolver.resolve(&self.expr);
-        // x
-        panic!()
+        resolver.resolve(&self.expr)
     }
 
     pub fn eval_string(&self) -> Option<String> {

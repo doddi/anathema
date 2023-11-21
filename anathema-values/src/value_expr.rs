@@ -80,14 +80,14 @@ impl<'a, 'expr> ValueResolver<'expr> for Deferred<'a, 'expr> {
 //   - Resolver -
 // -----------------------------------------------------------------------------
 /// Resolve the expression, including deferred values.
-pub struct Resolver<'state, 'expr> {
-    context: &'state Context<'state, 'expr>,
+pub struct Resolver<'ctx, 'state, 'expr> {
+    context: &'ctx Context<'state, 'expr>,
     node_id: Option<&'state NodeId>,
     is_deferred: bool,
 }
 
-impl<'state, 'expr> Resolver<'state, 'expr> {
-    pub fn new(context: &'state Context<'state, 'expr>, node_id: Option<&'state NodeId>) -> Self {
+impl<'ctx, 'state, 'expr> Resolver<'ctx, 'state, 'expr> {
+    pub fn new(context: &'ctx Context<'state, 'expr>, node_id: Option<&'state NodeId>) -> Self {
         Self {
             context,
             node_id,
@@ -95,6 +95,10 @@ impl<'state, 'expr> Resolver<'state, 'expr> {
         }
     }
 
+}
+
+
+impl<'state, 'expr> Resolver<'_, 'state, 'expr> {
     pub fn resolve(&mut self, value: &'expr ValueExpr) -> ValueRef<'state> {
         match value.eval(self) {
             ValueRef::Deferred(path) => {
@@ -150,9 +154,7 @@ impl<'state, 'expr> Resolver<'state, 'expr> {
         T: for<'b> TryFrom<ValueRef<'b>>,
     {
         let mut output = SmallVec::<[T; 4]>::new();
-
         let value = value.eval(self);
-
         let value = match value {
             ValueRef::Deferred(path) => {
                 self.is_deferred = true;
@@ -187,7 +189,7 @@ impl<'state, 'expr> Resolver<'state, 'expr> {
     }
 }
 
-impl<'state, 'expr> ValueResolver<'expr> for Resolver<'state, 'expr> {
+impl<'state, 'expr> ValueResolver<'expr> for Resolver<'_, 'state, 'expr> {
     fn resolve_number(&mut self, value: &'expr ValueExpr) -> Option<Num> {
         match value.eval(self) {
             ValueRef::Owned(Owned::Num(num)) => Some(num),

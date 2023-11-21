@@ -83,12 +83,12 @@ impl<'state, 'expr> Context<'state, 'expr> {
         }
     }
 
-    pub(crate) fn lookup_path(&self, path: &Path) -> ValueRef<'expr> {
-        match self.scopes.lookup(path) {
-            ValueRef::Empty => ValueRef::Deferred(path.clone()),
-            val => val,
-        }
-    }
+    // pub(crate) fn lookup_path(&self, path: &Path) -> ValueRef<'expr> {
+    //     match self.scopes.lookup(path) {
+    //         ValueRef::Empty => ValueRef::Deferred(path.clone()),
+    //         val => val,
+    //     }
+    // }
 
     // TODO: rename this.
     // It's not really creating a new scope but rather cloning the
