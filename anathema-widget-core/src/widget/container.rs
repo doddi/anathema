@@ -3,7 +3,7 @@ use std::fmt::{self, Debug};
 use std::ops::{Deref, DerefMut};
 
 use anathema_render::{Color, ScreenPos, Size, Style};
-use anathema_values::{remove_node, Context, NodeId};
+use anathema_values::{remove_node, Context, NodeId, Value};
 
 use super::{AnyWidget, Widget};
 use crate::contexts::{LayoutCtx, PaintCtx, PositionCtx, Unsized, WithSize};
@@ -17,8 +17,8 @@ use crate::{Display, LocalPos, Padding, Pos, Region};
 /// * [`position`](Self::position)
 /// * [`paint`](Self::paint)
 pub struct WidgetContainer<'e> {
-    pub(crate) background: Option<Color>,
-    pub(crate) display: Display,
+    pub(crate) background: Value<Color>,
+    pub(crate) display: Value<Display>,
     pub(crate) padding: Padding,
     pub(crate) inner: Box<dyn AnyWidget>,
     pub(crate) pos: Pos,
@@ -116,7 +116,7 @@ impl WidgetContainer<'_> {
         constraints: Constraints,
         data: &Context<'_, 'e>,
     ) -> Result<Size> {
-        match self.display {
+        match self.display.value_or_default() {
             Display::Exclude => self.size = Size::ZERO,
             _ => {
                 let layout = LayoutCtx::new(constraints, self.padding);
@@ -148,7 +148,7 @@ impl WidgetContainer<'_> {
     }
 
     pub fn paint(&mut self, children: &mut Nodes, ctx: PaintCtx<'_, Unsized>) {
-        if let Display::Hide | Display::Exclude = self.display {
+        if let Display::Hide | Display::Exclude = self.display.value_or_default() {
             return;
         }
 
@@ -166,12 +166,12 @@ impl WidgetContainer<'_> {
     }
 
     fn paint_background(&self, ctx: &mut PaintCtx<'_, WithSize>) -> Option<()> {
-        let color = self.background?;
+        let color = self.background.value_ref()?;
         let width = self.size.width;
 
         let background_str = format!("{:width$}", "", width = width);
         let mut style = Style::new();
-        style.set_bg(color);
+        style.set_bg(*color);
 
         for y in 0..self.size.height {
             let pos = LocalPos::new(0, y);
@@ -182,6 +182,7 @@ impl WidgetContainer<'_> {
     }
 
     pub fn update(&mut self, context: &Context<'_, '_>, node_id: &NodeId) {
+        self.display.resolve(context, Some(node_id));
         self.inner.update(context, node_id);
     }
 }

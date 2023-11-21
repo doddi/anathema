@@ -116,7 +116,23 @@ macro_rules! num_try_from {
 
             fn try_from(value: ValueRef<'_>) -> Result<Self, Self::Error> {
                 match value {
-                    ValueRef::Owned(Owned::Num(Num::$idn(num))) => Ok(num as $t),
+                    ValueRef::Owned(Owned::Num(Num::Signed(num))) => Ok(num as $t),
+                    ValueRef::Owned(Owned::Num(Num::Unsigned(num))) => Ok(num as $t),
+                    _ => Err(()),
+                }
+            }
+        }
+    };
+}
+
+macro_rules! float_try_from {
+    ($t:ty) => {
+        impl TryFrom<ValueRef<'_>> for $t {
+            type Error = ();
+
+            fn try_from(value: ValueRef<'_>) -> Result<Self, Self::Error> {
+                match value {
+                    ValueRef::Owned(Owned::Num(Num::Float(num))) => Ok(num as $t),
                     _ => Err(()),
                 }
             }
@@ -154,8 +170,8 @@ num_try_from!(i32, Signed);
 num_try_from!(i16, Signed);
 num_try_from!(i8, Signed);
 
-num_try_from!(f64, Float);
-num_try_from!(f32, Float);
+float_try_from!(f64);
+float_try_from!(f32);
 
 impl TryFrom<ValueRef<'_>> for String {
     type Error = ();

@@ -55,13 +55,13 @@ impl SingleNode {
         );
 
         let widget = WidgetContainer {
-            inner: Factory::exec(context)?,
-            background: None,       //context.background(),
-            display: Display::Show, //context.display(),
+            display: context.get("display"),
+            background: context.get("background"),       //context.background(),
             padding: Padding::ZERO, // context.padding(),
             pos: Pos::ZERO,
             size: Size::ZERO,
             node_id: node_id.clone(),
+            inner: Factory::exec(context)?,
             expr: None,
         };
 

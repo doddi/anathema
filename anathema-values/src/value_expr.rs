@@ -36,7 +36,6 @@ impl<'a, 'expr> Deferred<'a, 'expr> {
     pub fn resolve(&mut self, value: &'expr ValueExpr) -> ValueRef<'expr> {
         value.eval(self)
     }
-
 }
 
 impl<'a, 'expr> ValueResolver<'expr> for Deferred<'a, 'expr> {
@@ -81,14 +80,14 @@ impl<'a, 'expr> ValueResolver<'expr> for Deferred<'a, 'expr> {
 //   - Resolver -
 // -----------------------------------------------------------------------------
 /// Resolve the expression, including deferred values.
-pub struct Resolver<'state, 'expr> {
-    context: &'state Context<'state, 'expr>,
+pub struct Resolver<'ctx, 'state, 'expr> {
+    context: &'ctx Context<'state, 'expr>,
     node_id: Option<&'state NodeId>,
     is_deferred: bool,
 }
 
-impl<'state, 'expr> Resolver<'state, 'expr> {
-    pub fn new(context: &'state Context<'state, 'expr>, node_id: Option<&'state NodeId>) -> Self {
+impl<'ctx, 'state, 'expr> Resolver<'ctx, 'state, 'expr> {
+    pub fn new(context: &'ctx Context<'state, 'expr>, node_id: Option<&'state NodeId>) -> Self {
         Self {
             context,
             node_id,
@@ -96,6 +95,10 @@ impl<'state, 'expr> Resolver<'state, 'expr> {
         }
     }
 
+}
+
+
+impl<'state, 'expr> Resolver<'_, 'state, 'expr> {
     pub fn resolve(&mut self, value: &'expr ValueExpr) -> ValueRef<'state> {
         match value.eval(self) {
             ValueRef::Deferred(path) => {
@@ -105,7 +108,6 @@ impl<'state, 'expr> Resolver<'state, 'expr> {
             val => val,
         }
     }
-
 
     pub fn is_deferred(&self) -> bool {
         self.is_deferred
@@ -152,9 +154,7 @@ impl<'state, 'expr> Resolver<'state, 'expr> {
         T: for<'b> TryFrom<ValueRef<'b>>,
     {
         let mut output = SmallVec::<[T; 4]>::new();
-
         let value = value.eval(self);
-
         let value = match value {
             ValueRef::Deferred(path) => {
                 self.is_deferred = true;
@@ -189,7 +189,7 @@ impl<'state, 'expr> Resolver<'state, 'expr> {
     }
 }
 
-impl<'state, 'expr> ValueResolver<'expr> for Resolver<'state, 'expr> {
+impl<'state, 'expr> ValueResolver<'expr> for Resolver<'_, 'state, 'expr> {
     fn resolve_number(&mut self, value: &'expr ValueExpr) -> Option<Num> {
         match value.eval(self) {
             ValueRef::Owned(Owned::Num(num)) => Some(num),
@@ -475,11 +475,11 @@ mod test {
         expr.test().expect_owned(-3);
     }
 
-    //     #[test]
-    //     fn sub_static() {
-    //         let expr = sub(unum(10), unum(2));
-    //         expr.test([]).expect_owned(8u8);
-    //     }
+    #[test]
+    fn sub_static() {
+        let expr = sub(unum(10), unum(2));
+        expr.test().expect_owned(8u8);
+    }
 
     //     #[test]
     //     fn mul_static() {
