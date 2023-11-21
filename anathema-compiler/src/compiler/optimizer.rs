@@ -82,8 +82,8 @@ impl Optimizer {
                     self.opt_for(data, binding);
                     continue;
                 }
-                &ParseExpr::View(id) => {
-                    self.output.push(Expression::View(id));
+                &ParseExpr::View(ident) => {
+                    self.output.push(Expression::View(ident));
                     continue;
                 }
                 &ParseExpr::Node(ident_index) => {
@@ -93,7 +93,7 @@ impl Optimizer {
                     let mut text_and_attributes = 0;
                     loop {
                         match self.input.get(self.ep) {
-                            Some(&ParseExpr::LoadText(index)) => {
+                            Some(&ParseExpr::LoadValue(index)) => {
                                 self.output.push(Expression::LoadText(index));
                                 text_and_attributes += 1;
                                 self.ep += 1;
@@ -123,7 +123,7 @@ impl Optimizer {
                     );
                     continue;
                 }
-                &ParseExpr::LoadText(index) => Expression::LoadText(index),
+                &ParseExpr::LoadValue(index) => Expression::LoadText(index),
                 &ParseExpr::LoadAttribute { key, value } => {
                     Expression::LoadAttribute { key, value }
                 }

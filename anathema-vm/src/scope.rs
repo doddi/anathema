@@ -29,10 +29,28 @@ impl<'vm> Scope<'vm> {
         loop {
             let instruction = self.instructions.remove(0);
             match instruction {
-                Instruction::View(id) => {
-                    let _id = self.consts.lookup_value(id).clone();
-                    // nodes.push(Template::View(id));
-                    panic!("need to rethink views")
+                Instruction::View(ident) => {
+                    let ident = self.consts.lookup_value(ident).clone();
+
+                    let ident = match self.instructions.remove(0) {
+                        Instruction::LoadValue(ident) => {
+                            self.consts.lookup_value(ident).clone()
+                        }
+                        _ => unreachable!(
+                            "a view can not be compiled without being followed by a value"
+                        ),
+                    };
+
+                    let state = match self.instructions.get(0) {
+                        Some(Instruction::LoadValue(i)) => {
+                            let state = Some(self.consts.lookup_value(*i).clone());
+                            self.instructions.remove(0);
+                            state
+                        }
+                        _ => None,
+                    };
+
+                    nodes.push(Expression::View { ident, state });
                 }
                 Instruction::Node { ident, scope_size } => {
                     nodes.push(self.node(ident, scope_size)?)
@@ -93,7 +111,7 @@ impl<'vm> Scope<'vm> {
                 Instruction::Else { .. } => {
                     unreachable!("the `Else` instructions are consumed inside the `If` instruction")
                 }
-                Instruction::LoadAttribute { .. } | Instruction::LoadText(_) => {
+                Instruction::LoadAttribute { .. } | Instruction::LoadValue(_) => {
                     unreachable!("these instructions are only executed in the `node` function")
                 }
             }
@@ -120,7 +138,9 @@ impl<'vm> Scope<'vm> {
                     let value = self.consts.lookup_value(*value);
                     attributes.insert(key.to_string(), value.clone());
                 }
-                Some(Instruction::LoadText(i)) => text = Some(self.consts.lookup_value(*i).clone()),
+                Some(Instruction::LoadValue(i)) => {
+                    text = Some(self.consts.lookup_value(*i).clone())
+                }
                 _ => break,
             }
             ip += 1;

@@ -29,7 +29,7 @@ pub enum Instruction {
         key: StringId,
         value: ValueId,
     },
-    LoadText(ValueId),
+    LoadValue(ValueId),
 }
 
 enum Branch {
@@ -70,7 +70,7 @@ impl Compiler {
             self.ep += 1;
             match expr {
                 Expression::Node { ident, scope_size } => self.compile_node(*ident, *scope_size),
-                Expression::View(id) => self.compile_view(*id),
+                Expression::View(ident) => self.compile_view(*ident),
                 Expression::LoadText(index) => self.compile_text(*index),
                 Expression::LoadAttribute { key, value } => self.compile_attribute(*key, *value),
                 Expression::If { cond, size } => {
@@ -89,8 +89,8 @@ impl Compiler {
         Ok(())
     }
 
-    fn compile_view(&mut self, id: ValueId) -> Result<()> {
-        self.output.push(Instruction::View(id));
+    fn compile_view(&mut self, ident: ValueId) -> Result<()> {
+        self.output.push(Instruction::View(ident));
         Ok(())
     }
 
@@ -103,7 +103,7 @@ impl Compiler {
     }
 
     fn compile_text(&mut self, index: ValueId) -> Result<()> {
-        self.output.push(Instruction::LoadText(index));
+        self.output.push(Instruction::LoadValue(index));
         Ok(())
     }
 

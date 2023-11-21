@@ -125,10 +125,10 @@ impl Kind {
 impl Display for Kind {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
-            Self::For => write!(f, "for"),
-            Self::In => write!(f, "in"),
-            Self::If => write!(f, "if"),
-            Self::Else => write!(f, "else"),
+            Self::For => write!(f, "<for>"),
+            Self::In => write!(f, "<in>"),
+            Self::If => write!(f, "<if>"),
+            Self::Else => write!(f, "<else>"),
             Self::View => write!(f, "<view>"),
             Self::Newline => write!(f, "\\n"),
             Self::Indent(s) => write!(f, "<indent {s}>"),

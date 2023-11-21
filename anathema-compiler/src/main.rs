@@ -1,7 +1,7 @@
 use anathema_compiler::*;
 
 fn main() {
-    let src = "node [padding:  [1 2 3 4]]";
+    let src = "view 'hello'";
     let (output, consts) = compile(src).unwrap();
     eprintln!("{output:#?}");
 

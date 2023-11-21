@@ -286,6 +286,7 @@ impl ControlFlow {
 #[derive(Debug)]
 pub enum Expression {
     Node(SingleNode),
+    View { ident: ValueExpr, state: Option<ValueExpr> },
     Loop(LoopExpr),
     ControlFlow(ControlFlow),
 }
@@ -300,6 +301,7 @@ impl Expression {
             Self::Node(node) => node.eval(context, node_id),
             Self::Loop(loop_expr) => loop_expr.eval(context, node_id),
             Self::ControlFlow(controlflow) => controlflow.eval(context, node_id),
+            Self::View { ident, state } => panic!("views!"),
         }
     }
 }

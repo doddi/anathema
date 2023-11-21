@@ -8,7 +8,7 @@ use crate::{Constants, StringId, ValueId};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Expression {
-    LoadText(ValueId),
+    LoadValue(ValueId),
     LoadAttribute { key: StringId, value: ValueId },
     View(ValueId),
     Node(StringId),
@@ -92,7 +92,7 @@ impl<'src, 'consts> Parser<'src, 'consts> {
     pub(crate) fn parse(&mut self) -> Result<Expression> {
         // * It is okay to advance the state once and only once
         //   in any parse function using `self.next_state()`.
-        //   The exception to this is for-loops and if statements
+        //   The exception to this is he parse view function
         // * State should never be set directly in any of the parse functions.
         //   There is one exception of this, and that's when moving from
         //   `ParseAttributes` to `ParseText`.
@@ -287,14 +287,20 @@ impl<'src, 'consts> Parser<'src, 'consts> {
 
     fn parse_view(&mut self) -> Result<Option<Expression>> {
         if Kind::View == self.tokens.peek_skip_indent() {
-            panic!("views should probably not have anything other than idents, so once the pratt parser does it's job, make sure it's an ident and nothing else");
-            // self.tokens.consume();
-            // self.lexer.consume(true, false);
-            // let id = ValueParser::new(&mut self.lexer).parse()?;
+            self.tokens.consume();
+            self.tokens.consume_indent();
+
+            let expr = expr(&mut self.tokens);
+            let value_expr = eval(expr, self.consts);
+            let ident = self.consts.store_value(value_expr);
+            self.tokens.consume_indent();
+
             // let id = self.constants.store_value(id);
             // self.lexer.consume(true, false);
-            // self.next_state();
-            // Ok(Some(Expression::View(id)))
+
+            self.next_state();
+            self.next_state();
+            Ok(Some(Expression::View(ident)))
         } else {
             self.next_state();
             Ok(None)
@@ -406,7 +412,7 @@ impl<'src, 'consts> Parser<'src, 'consts> {
         };
 
         self.next_state();
-        Ok(Some(Expression::LoadText(value_id)))
+        Ok(Some(Expression::LoadValue(value_id)))
     }
 
     // -----------------------------------------------------------------------------
@@ -512,7 +518,7 @@ mod test {
         let src = "a 'a'      \n\n//some comments \n    ";
         let expected = vec![
             Expression::Node(0.into()),
-            Expression::LoadText(0.into()),
+            Expression::LoadValue(0.into()),
             Expression::EOF,
         ];
 
@@ -689,6 +695,11 @@ mod test {
         let src = "view 'mail'";
         let mut expressions = parse_ok(src);
         assert_eq!(expressions.remove(0), Expression::View(0.into()));
+
+        let src = "view 'mail' state";
+        let mut expressions = parse_ok(src);
+        assert_eq!(expressions.remove(0), Expression::View(0.into()));
+        assert_eq!(expressions.remove(0), Expression::LoadValue(1.into()));
     }
 
     #[test]
@@ -721,6 +732,6 @@ mod test {
         let src = "a 'a' 'b'";
         let mut expressions = parse_ok(src);
         assert_eq!(expressions.remove(0), Expression::Node(0.into()));
-        assert_eq!(expressions.remove(0), Expression::LoadText(0.into()));
+        assert_eq!(expressions.remove(0), Expression::LoadValue(0.into()));
     }
 }

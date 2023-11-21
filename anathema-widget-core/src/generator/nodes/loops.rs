@@ -208,7 +208,7 @@ mod test {
             let dirt = drain_dirty_nodes();
             let context = Context::root(&self.state);
             for (id, change) in dirt {
-                self.nodes.update(id.as_slice(), change, &context);
+                self.nodes.update(id.as_slice(), &change, &context);
             }
         }
 

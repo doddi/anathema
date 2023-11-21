@@ -21,6 +21,13 @@ impl State for Box<dyn State> {
     }
 }
 
+/// This exists so you can have a view with a default state of a unit
+impl State for () {
+    fn get(&self, key: &Path, node_id: Option<&NodeId>) -> ValueRef<'_> {
+        ValueRef::Empty
+    }
+}
+
 /// This is a generic trait for everything that 
 /// doesn't implement `State` (otherwise non StateValue<T>s would fail to compile)
 pub trait BlanketGet {

@@ -7,7 +7,7 @@ edition = "2021"
 
 [features]
 default = []
-testing = []
+testing = ["anathema-widget-core/testing"]
 
 [dependencies]
 anathema-render = { path = "../anathema-render" }
