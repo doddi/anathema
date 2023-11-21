@@ -37,8 +37,8 @@ impl From<Color> for Owned {
 }
 
 impl From<&Color> for Owned {
-    fn from(val: Color) -> Self {
-        Self::Color(val)
+    fn from(val: &Color) -> Self {
+        Self::Color(*val)
     }
 }
 
