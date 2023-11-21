@@ -94,9 +94,7 @@ impl<'ctx, 'state, 'expr> Resolver<'ctx, 'state, 'expr> {
             is_deferred: false,
         }
     }
-
 }
-
 
 impl<'state, 'expr> Resolver<'_, 'state, 'expr> {
     pub fn resolve(&mut self, value: &'expr ValueExpr) -> ValueRef<'state> {
@@ -481,83 +479,85 @@ mod test {
         expr.test().expect_owned(8u8);
     }
 
-    //     #[test]
-    //     fn mul_static() {
-    //         let expr = mul(unum(10), unum(2));
-    //         expr.test([]).expect_owned(20u8);
-    //     }
+    #[test]
+    fn mul_static() {
+        let expr = mul(unum(10), unum(2));
+        expr.test().expect_owned(20u8);
+    }
 
-    //     #[test]
-    //     fn div_static() {
-    //         let expr = div(unum(10), unum(2));
-    //         expr.test([]).expect_owned(5u8);
-    //     }
+    #[test]
+    fn div_static() {
+        let expr = div(unum(10), unum(2));
+        expr.test().expect_owned(5u8);
+    }
 
-    //     #[test]
-    //     fn mod_static() {
-    //         panic!()
-    //         // let expr = modulo(unum(5), unum(3));
-    //         // expr.test([]).expect_owned(2u8);
-    //     }
+    #[test]
+    fn mod_static() {
+        let expr = modulo(unum(5), unum(3));
+        expr.test().expect_owned(2u8);
+    }
 
-    //     #[test]
-    //     fn bools() {
-    //         // false
-    //         let expr = ident("is_false");
-    //         expr.test([("is_false", &false)]).expect_owned(false);
+    #[test]
+    fn bools() {
+        // false
+        let expr = ident("is_false");
+        expr.with_data([("is_false", false)]).expect_owned(false);
 
-    //         // // not is false
-    //         // let expr = not(ident("is_false"));
-    //         // expr.test([("is_false", false.into())]).expect_owned(true);
+        // not is false
+        let expr = not(ident("is_false"));
+        expr.with_data([("is_false", false)]).expect_owned(true);
 
-    //         // // equality
-    //         // let expr = eq(ident("one"), ident("one"));
-    //         // expr.test([("one", 1.into())]).expect_owned(true);
+        // equality
+        let expr = eq(ident("one"), ident("one"));
+        expr.with_data([("one", 1)]).eval_bool(true);
 
-    //         // // not equality
-    //         // let expr = not(eq(ident("one"), ident("two")));
-    //         // expr.test([("one", 1.into()), ("two", 2.into())])
-    //         //     .expect_owned(true);
+        // not equality
+        let expr = not(eq(ident("one"), ident("two")));
+        expr.with_data([("one", 1), ("two", 2.into())])
+            .eval_bool(true);
 
-    //         // // or
-    //         // let expr = or(ident("one"), ident("two"));
-    //         // expr.test([("one", false.into()), ("two", true.into())])
-    //         //     .expect_owned(true);
+        // or
+        let expr = or(ident("one"), ident("two"));
+        expr.with_data([("one", false), ("two", true.into())])
+            .eval_bool(true);
 
-    //         // let expr = or(ident("one"), ident("two"));
-    //         // expr.test([("one", true.into()), ("two", false.into())])
-    //         //     .expect_owned(true);
+        let expr = or(ident("one"), ident("two"));
+        expr.with_data([("one", true), ("two", false.into())])
+            .eval_bool(true);
 
-    //         // let expr = or(ident("one"), ident("two"));
-    //         // expr.test([("one", false.into()), ("two", false.into())])
-    //         //     .expect_owned(false);
+        let expr = or(ident("one"), ident("two"));
+        expr.with_data([("one", false), ("two", false.into())])
+            .eval_bool(false);
 
-    //         // // and
-    //         // let expr = and(ident("one"), ident("two"));
-    //         // expr.test([("one", true.into()), ("two", true.into())])
-    //         //     .expect_owned(true);
+        // and
+        let expr = and(ident("one"), ident("two"));
+        expr.with_data([("one", true), ("two", true.into())])
+            .eval_bool(true);
 
-    //         // let expr = and(ident("one"), ident("two"));
-    //         // expr.test([("one", false.into()), ("two", true.into())])
-    //         //     .expect_owned(false);
+        let expr = and(ident("one"), ident("two"));
+        expr.with_data([("one", false), ("two", true.into())])
+            .eval_bool(false);
 
-    //         // let expr = and(ident("one"), ident("two"));
-    //         // expr.test([("one", true.into()), ("two", false.into())])
-    //         //     .expect_owned(false);
-    //     }
+        let expr = and(ident("one"), ident("two"));
+        expr.with_data([("one", true), ("two", false.into())])
+            .eval_bool(false);
+    }
 
-    //     #[test]
-    //     fn path() {
-    //         panic!()
-    //         // let test = dot(ident("inner"), ident("name")).test([]);
-    //         // let name = test.eval().unwrap();
-    //         // assert!(matches!(name, ValueRef::Str("Fiddle McStick")));
-    //     }
+    #[test]
+    fn path() {
+        let test = dot(ident("inner"), ident("name"))
+            .with_data([("inner", Map::new([("name", "Fiddle McStick".to_string())]))]);
+        let name = test.eval();
+        assert!(matches!(name, ValueRef::Str("Fiddle McStick")));
+    }
 
-    //     #[test]
-    //     fn string() {
-    //         let expr = list(vec![strlit("Mr. "), dot(ident("inner"), ident("name"))]);
-    //         // let string = expr.test(]).eval_string().unwrap();
-    //         // assert_eq!(string, "Mr. Fiddle McStick");
-    //     }
+    #[test]
+    fn string() {
+        let expr = list(vec![strlit("Mr. "), dot(ident("inner"), ident("name"))]);
+        let string = expr
+            .with_data([("inner", Map::new([("name", "Fiddle McStick".to_string())]))])
+            .eval_string()
+            .unwrap();
+        assert_eq!(string, "Mr. Fiddle McStick");
+    }
 }

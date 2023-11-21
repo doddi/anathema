@@ -151,10 +151,15 @@ where
     }
 
     pub fn eval_string(&self) -> Option<String> {
-        // let context = Context::new(&self.state, &self.scope);
-        // // let node_id = 0.into();
-        // // self.expr.eval_string(&context, Some(&node_id))
-        panic!("this should probably resolve value instead")
+        let context = Context::new(&self.state, &self.scope);
+        let mut resolver = Resolver::new(&context, None);
+        resolver.resolve_string(&self.expr)
+    }
+
+    pub fn eval_bool(&self, b: bool) -> bool {
+        let context = Context::new(&self.state, &self.scope);
+        let mut resolver = Resolver::new(&context, None);
+        resolver.resolve_bool(&self.expr) == b
     }
 
     pub fn expect_owned(self, expected: impl Into<Owned>) {

@@ -24,7 +24,19 @@ impl From<bool> for Owned {
     }
 }
 
+impl From<&bool> for Owned {
+    fn from(val: &bool) -> Self {
+        Self::Bool(*val)
+    }
+}
+
 impl From<Color> for Owned {
+    fn from(val: Color) -> Self {
+        Self::Color(val)
+    }
+}
+
+impl From<&Color> for Owned {
     fn from(val: Color) -> Self {
         Self::Color(val)
     }
