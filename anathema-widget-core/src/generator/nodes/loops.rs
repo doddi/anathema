@@ -41,7 +41,7 @@ pub struct LoopNode<'e> {
 }
 
 impl<'e> LoopNode<'e> {
-    pub(crate) fn new(
+    pub(in crate::generator) fn new(
         expressions: &'e [Expression],
         binding: Path,
         collection: Collection<'e>,
