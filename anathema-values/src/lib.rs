@@ -82,7 +82,7 @@ impl<T> Value<T> {
     }
 }
 
-impl<T: Default + Copy> Value<T> {
+impl<T: Copy> Value<T> {
     pub fn value(&self) -> Option<T> {
         match self {
             Self::Static(val) => Some(*val),

@@ -1,4 +1,4 @@
-use std::fmt::{self, Display};
+use std::fmt::{self, Display as RustDisplay};
 use std::ops::{Add, AddAssign, Mul, Sub, SubAssign};
 
 use anathema_render::{ScreenPos, Size};
@@ -108,27 +108,29 @@ pub enum Align {
     Centre,
 }
 
-impl TryFrom<&str> for Align {
-    type Error = ();
+// TODO can we remove this?
+// TB: 2023-11-20
+// impl TryFrom<&str> for Align {
+//     type Error = ();
 
-    fn try_from(value: &str) -> std::result::Result<Self, Self::Error> {
-        let wrap = match value {
-            "top" => Self::Top,
-            "top-right" => Self::TopRight,
-            "right" => Self::Right,
-            "bottom-right" => Self::BottomRight,
-            "bottom" => Self::Bottom,
-            "bottom-left" => Self::BottomLeft,
-            "left" => Self::Left,
-            "top-left" => Self::Left,
-            "centre" | "center" => Self::Centre,
-            _ => Self::TopLeft,
-        };
-        Ok(wrap)
-    }
-}
+//     fn try_from(value: &str) -> std::result::Result<Self, Self::Error> {
+//         let wrap = match value {
+//             "top" => Self::Top,
+//             "top-right" => Self::TopRight,
+//             "right" => Self::Right,
+//             "bottom-right" => Self::BottomRight,
+//             "bottom" => Self::Bottom,
+//             "bottom-left" => Self::BottomLeft,
+//             "left" => Self::Left,
+//             "top-left" => Self::Left,
+//             "centre" | "center" => Self::Centre,
+//             _ => Self::TopLeft,
+//         };
+//         Ok(wrap)
+//     }
+// }
 
-impl Display for Align {
+impl RustDisplay for Align {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Top => write!(f, "top"),
@@ -165,6 +167,33 @@ impl TryFrom<ValueRef<'_>> for Align {
         Ok(wrap)
     }
 }
+
+/// Determine how a widget should be displayed and laid out
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Display {
+    /// Show the widget, this is the default
+    #[default]
+    Show,
+    /// Include the widget as part of the layout but don't render it
+    Hide,
+    /// Exclude the widget from the layout and paint step.
+    Exclude,
+}
+
+impl TryFrom<ValueRef<'_>> for Display {
+    type Error = ();
+
+    fn try_from(value: ValueRef<'_>) -> std::result::Result<Self, Self::Error> {
+        let wrap = match value {
+            ValueRef::Str("hide") => Self::Hide,
+            ValueRef::Str("exclude") => Self::Exclude,
+            _ => Self::Show,
+        };
+        Ok(wrap)
+    }
+}
+
+impl_dyn_value!(Display);
 
 #[derive(Debug)]
 pub enum HorzEdge {
