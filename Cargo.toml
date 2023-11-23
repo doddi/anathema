@@ -21,6 +21,7 @@ flume = "0.10.14"
 [workspace]
 members = [
     "anathema-compiler",
+    "anathema-lsp",
     "anathema-render",
     "anathema-runtime",
     "anathema-vm",
