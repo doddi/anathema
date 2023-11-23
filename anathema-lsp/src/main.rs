@@ -107,11 +107,11 @@ impl LanguageServer for Backend {
 
 #[tokio::main]
 async fn main() {
-    // let log_file = File::create("trace.log").expect("should create trace file");
-    // tracing_subscriber::fmt()
-    //     .with_env_filter(EnvFilter::from_default_env())
-    //     .with_writer(Mutex::new(log_file))
-    //     .init();
+    let log_file = File::create("/tmp/trace.log").expect("should create trace file");
+    tracing_subscriber::fmt()
+        .with_env_filter(EnvFilter::from_default_env())
+        .with_writer(Mutex::new(log_file))
+        .init();
 
     let (stdin, stdout) = (tokio::io::stdin(), tokio::io::stdout());
 

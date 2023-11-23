@@ -1,0 +1,22 @@
+{
+  "name": "anathema-lsp",
+  "description": "Language Server for Anathema",
+  "version": "0.0.1",
+  "contributors": [
+    "doddi"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/togglebyte/anathema"
+  },
+  "engines": {
+    "vscode": "^1.74.0"
+  },
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./extension",
+  "dependencies": {
+    "vscode-languageclient": "^8.1.0"
+  }
+}
