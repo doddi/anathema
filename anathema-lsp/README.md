@@ -24,6 +24,35 @@ vim.api.nvim_create_autocmd("BufEnter", {
 
 This will start the lsp when you open a file with the `.anat` extension.
 
+### Vscode
+To build:
+```bash
+cd clients/vscode
+npm install
+```
+
+To debug the lsp in vscode, first create a `launch.json` file in `.vscode/` with the following contents:
+```
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "extensionHost",
+            "request": "launch",
+            "name": "Debug LSP Extension",
+            "runtimeExecutable": "${execPath}",
+            "env": {
+                "RUST_LOG": "debug"
+            },
+            "args": [
+              "--extensionDevelopmentPath=${workspaceRoot}/anathema-lsp/clients/vscode",
+              "--disable-extensions",
+              "${workspaceRoot}/anathema-lsp/"
+            ]
+          }
+    ]
+}
+```
+Run the debugger and open the provided `test.anat` file to test the lsp.
 
 ## Features
 
