@@ -1,6 +1,7 @@
 package com.github.doddi.anathema.lsp
 
 import com.intellij.execution.configurations.GeneralCommandLine
+import com.intellij.lang.annotation.HighlightSeverity
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.platform.lsp.api.ProjectWideLspServerDescriptor
@@ -18,10 +19,8 @@ class AnathemaLspServerDescriptor(project: Project) : ProjectWideLspServerDescri
 
     override fun isSupportedFile(file: VirtualFile) = file.extension == "anat"
 
-    // references resolution is implemented without using the LSP server
     override val lspGoToDefinitionSupport = false
 
-    // code completion is implemented without using the LSP server
     override val lspCompletionSupport = null
 
 
@@ -31,6 +30,10 @@ class AnathemaLspServerDescriptor(project: Project) : ProjectWideLspServerDescri
 }
 
 class MyLspDiagnosticsSupport : LspDiagnosticsSupport() {
+    override fun getHighlightSeverity(diagnostic: Diagnostic): HighlightSeverity? {
+        return HighlightSeverity.ERROR
+    }
+
     override fun getMessage(diagnostic: Diagnostic): String {
         return super.getMessage(diagnostic)
     }

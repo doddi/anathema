@@ -3,9 +3,9 @@ use std::fs::File;
 use std::sync::Mutex;
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::{
-    Diagnostic, DidChangeTextDocumentParams,
-    DidOpenTextDocumentParams, InitializeParams, InitializeResult, InitializedParams, Range,
-    ServerCapabilities, ServerInfo, TextDocumentSyncCapability, TextDocumentSyncKind, Url,
+    Diagnostic, DidChangeTextDocumentParams, DidOpenTextDocumentParams, InitializeParams,
+    InitializeResult, InitializedParams, Range, ServerCapabilities, ServerInfo,
+    TextDocumentSyncCapability, TextDocumentSyncKind, Url,
 };
 use tower_lsp::{lsp_types, Client, LanguageServer, LspService, Server};
 use tracing_subscriber::EnvFilter;
@@ -17,9 +17,7 @@ struct Backend {
 
 impl Backend {
     pub fn new(client: Client) -> Self {
-        Backend {
-            client,
-        }
+        Backend { client }
     }
 
     async fn compile(&self, uri: Url, content: &str) {
@@ -39,15 +37,25 @@ impl Backend {
             }
             Err(e) => {
                 debug!("error: {:?}", e);
-                self.client
-                    .publish_diagnostics(
-                        uri,
-                        vec![Diagnostic::new_simple(
-                            Range::new(lsp_types::Position::new(e.line as u32, 0), lsp_types::Position::new(e.line as u32, e.src.len() as u32)),
-                            format!("{:?}", e.kind))],
-                        None,
-                    )
-                    .await;
+
+                let mut lines = content.lines();
+                if let Some(line) = lines.nth(e.line - 1) {
+                    info!("line: {}", line);
+                    let line_length = line.len();
+                    self.client
+                        .publish_diagnostics(
+                            uri,
+                            vec![Diagnostic::new_simple(
+                                Range::new(
+                                    lsp_types::Position::new(e.line as u32 - 1, 0),
+                                    lsp_types::Position::new(e.line as u32 - 1, line_length as u32),
+                                ),
+                                format!("{:?}", e.kind),
+                            )],
+                            None,
+                        )
+                        .await;
+                }
             }
         }
     }
@@ -75,9 +83,6 @@ impl LanguageServer for Backend {
 
     async fn initialized(&self, _params: InitializedParams) {
         debug!("Initialized");
-        self.client
-            .log_message(lsp_types::MessageType::ERROR, "initialized!")
-            .await;
     }
 
     async fn shutdown(&self) -> Result<()> {
@@ -86,9 +91,6 @@ impl LanguageServer for Backend {
 
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
         debug!("doc opened {}", params.text_document.uri);
-        self.client
-            .log_message(lsp_types::MessageType::ERROR, "file opened")
-            .await;
 
         self.compile(params.text_document.uri, params.text_document.text.as_str())
             .await;
@@ -101,7 +103,7 @@ impl LanguageServer for Backend {
             params.text_document.uri,
             params.content_changes[0].text.as_str(),
         )
-            .await;
+        .await;
     }
 }
 
