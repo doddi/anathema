@@ -1,4 +1,9 @@
-# anathema-lsp-intellij
+# Anathema-lsp
+
+<!-- Plugin description -->
+**Anathema IntelliJ plugin** is a plugin that provides LSP information for the Anathema project.
+
+<!-- Plugin description end -->
 
 ## Installation
 
