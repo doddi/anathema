@@ -12,8 +12,8 @@ use crate::generator::Expression;
 use crate::WidgetContainer;
 
 #[derive(Debug)]
-struct Iteration<'e> {
-    body: Nodes<'e>,
+pub(in crate::generator) struct Iteration<'e> {
+    pub(super) body: Nodes<'e>,
     node_id: NodeId,
 }
 
@@ -32,7 +32,7 @@ impl<'e> Iteration<'e> {
 #[derive(Debug)]
 pub struct LoopNode<'e> {
     expressions: &'e [Expression],
-    iterations: Vec<Iteration<'e>>,
+    pub(super) iterations: Vec<Iteration<'e>>,
     current_iteration: usize,
     pub(super) binding: Path,
     pub(super) collection: Collection<'e>,

@@ -3,7 +3,7 @@ use std::fmt::{self, Debug};
 use std::ops::{Deref, DerefMut};
 
 use anathema_render::{Color, ScreenPos, Size, Style};
-use anathema_values::{remove_node, Context, NodeId, Value};
+use anathema_values::{remove_node, Context, NodeId, Value, Attributes};
 
 use super::{AnyWidget, Widget};
 use crate::contexts::{LayoutCtx, PaintCtx, PositionCtx, Unsized, WithSize};
@@ -25,6 +25,7 @@ pub struct WidgetContainer<'e> {
     pub(crate) size: Size,
     pub(crate) node_id: NodeId,
     pub expr: Option<&'e Expression>,
+    pub attributes: &'e Attributes,
 }
 
 impl WidgetContainer<'_> {

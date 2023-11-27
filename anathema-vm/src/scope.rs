@@ -32,15 +32,6 @@ impl<'vm> Scope<'vm> {
                 Instruction::View(ident) => {
                     let ident = self.consts.lookup_value(ident).clone();
 
-                    let ident = match self.instructions.remove(0) {
-                        Instruction::LoadValue(ident) => {
-                            self.consts.lookup_value(ident).clone()
-                        }
-                        _ => unreachable!(
-                            "a view can not be compiled without being followed by a value"
-                        ),
-                    };
-
                     let state = match self.instructions.get(0) {
                         Some(Instruction::LoadValue(i)) => {
                             let state = Some(self.consts.lookup_value(*i).clone());

@@ -5,7 +5,7 @@ pub mod testing;
 mod alignment;
 mod border;
 mod expand;
-// mod hstack;
+mod hstack;
 mod position;
 mod spacer;
 mod text;
@@ -22,7 +22,7 @@ use anathema_widget_core::Factory;
 pub use crate::alignment::Alignment;
 pub use crate::border::{Border, BorderStyle, Sides};
 pub use crate::expand::Expand;
-// pub use crate::hstack::HStack;
+pub use crate::hstack::HStack;
 pub use crate::position::Position;
 pub use crate::spacer::Spacer;
 pub use crate::text::{Text, TextSpan};
@@ -37,7 +37,7 @@ mod factories {
     pub(super) use crate::alignment::AlignmentFactory;
     pub(super) use crate::border::BorderFactory;
     pub(super) use crate::expand::ExpandFactory;
-    // pub(super) use crate::hstack::HStackFactory;
+    pub(super) use crate::hstack::HStackFactory;
     pub(super) use crate::position::PositionFactory;
     // pub(super) use crate::spacer::SpacerFactory;
     pub(super) use crate::text::{SpanFactory, TextFactory};
@@ -52,7 +52,7 @@ pub fn register_default_widgets() -> Result<()> {
         Factory::register("alignment".to_string(), factories::AlignmentFactory),
         Factory::register("border".to_string(), factories::BorderFactory),
         Factory::register("expand".to_string(), factories::ExpandFactory),
-        // Factory::register("hstack".to_string(), factories::HStackFactory),
+        Factory::register("hstack".to_string(), factories::HStackFactory),
         Factory::register("position".to_string(), factories::PositionFactory),
         // Factory::register("spacer".to_string(), factories::SpacerFactory),
         Factory::register("span".to_string(), factories::SpanFactory),

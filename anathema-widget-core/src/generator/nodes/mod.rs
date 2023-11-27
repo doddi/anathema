@@ -1,7 +1,7 @@
 use std::iter::once;
 use std::ops::ControlFlow;
 
-use anathema_values::{Change, Context, LocalScope, NodeId, State};
+use anathema_values::{Change, Context, LocalScope, NodeId, Resolver, State, ValueRef};
 
 pub(crate) use self::controlflow::IfElse;
 pub(crate) use self::loops::LoopNode;
@@ -108,21 +108,21 @@ pub(crate) enum NodeKind<'e> {
     Single(Single<'e>),
     Loop(LoopNode<'e>),
     ControlFlow(IfElse<'e>),
+    // View(Box<dyn View>),
 }
 
 #[derive(Debug)]
 // TODO: possibly optimise this by making nodes optional on the node
-pub struct Nodes<'e> {
-    expressions: &'e [Expression],
-    inner: Vec<Node<'e>>,
-    active_loop: Option<usize>,
+pub struct Nodes<'expr> {
+    expressions: &'expr [Expression],
+    inner: Vec<Node<'expr>>,
     expr_index: usize,
     next_id: NodeId,
     cache_index: usize,
 }
 
-impl<'e> Nodes<'e> {
-    fn new_node(&mut self, context: &Context<'_, 'e>) -> Option<Result<()>> {
+impl<'expr> Nodes<'expr> {
+    fn new_node(&mut self, context: &Context<'_, 'expr>) -> Option<Result<()>> {
         let expr = self.expressions.get(self.expr_index)?;
         self.expr_index += 1;
         match expr.eval(&context, self.next_id.next()) {
@@ -134,12 +134,12 @@ impl<'e> Nodes<'e> {
 
     pub fn next<F>(
         &mut self,
-        context: &Context<'_, 'e>,
+        context: &Context<'_, 'expr>,
         layout: &LayoutCtx,
         f: &mut F,
     ) -> Option<Result<ControlFlow<(), ()>>>
     where
-        F: FnMut(&mut WidgetContainer<'e>, &mut Nodes<'e>, &Context<'_, 'e>) -> Result<()>,
+        F: FnMut(&mut WidgetContainer<'expr>, &mut Nodes<'expr>, &Context<'_, 'expr>) -> Result<()>,
     {
         match self.inner.get_mut(self.cache_index) {
             Some(n) => {
@@ -158,12 +158,12 @@ impl<'e> Nodes<'e> {
 
     pub fn for_each<F>(
         &mut self,
-        context: &Context<'_, 'e>,
+        context: &Context<'_, 'expr>,
         layout: &LayoutCtx,
         mut f: F,
     ) -> Result<()>
     where
-        F: FnMut(&mut WidgetContainer<'e>, &mut Nodes<'e>, &Context<'_, 'e>) -> Result<()>,
+        F: FnMut(&mut WidgetContainer<'expr>, &mut Nodes<'expr>, &Context<'_, 'expr>) -> Result<()>,
     {
         loop {
             if let Some(res) = self.next(context, layout, &mut f) {
@@ -182,11 +182,10 @@ impl<'e> Nodes<'e> {
         update(&mut self.inner, node_id, change, context);
     }
 
-    pub(crate) fn new(expressions: &'e [Expression], next_id: NodeId) -> Self {
+    pub(crate) fn new(expressions: &'expr [Expression], next_id: NodeId) -> Self {
         Self {
             expressions,
             inner: vec![],
-            active_loop: None,
             expr_index: 0,
             next_id,
             cache_index: 0,
@@ -208,24 +207,21 @@ impl<'e> Nodes<'e> {
 
     pub fn iter_mut(
         &mut self,
-    ) -> impl Iterator<Item = (&mut WidgetContainer<'e>, &mut Nodes<'e>)> + '_ {
-        self.inner
-            .iter_mut()
-            .map(
-                |node| -> Box<dyn Iterator<Item = (&mut WidgetContainer<'e>, &mut Nodes<'e>)>> {
-                    match &mut node.kind {
-                        NodeKind::Single(Single {
-                            widget, children, ..
-                        }) => Box::new(once((widget, children))),
-                        NodeKind::Loop(loop_state) => Box::new(loop_state.iter_mut()),
-                        NodeKind::ControlFlow(control_flow) => Box::new(control_flow.iter_mut()),
-                    }
-                },
-            )
-            .flatten()
+    ) -> impl Iterator<Item = (&mut WidgetContainer<'expr>, &mut Nodes<'expr>)> + '_ {
+        self.inner.iter_mut().flat_map(
+            |node| -> Box<dyn Iterator<Item = (&mut WidgetContainer<'expr>, &mut Nodes<'expr>)>> {
+                match &mut node.kind {
+                    NodeKind::Single(Single {
+                        widget, children, ..
+                    }) => Box::new(once((widget, children))),
+                    NodeKind::Loop(loop_state) => Box::new(loop_state.iter_mut()),
+                    NodeKind::ControlFlow(control_flow) => Box::new(control_flow.iter_mut()),
+                }
+            },
+        )
     }
 
-    pub fn first_mut(&mut self) -> Option<(&mut WidgetContainer<'e>, &mut Nodes<'e>)> {
+    pub fn first_mut(&mut self) -> Option<(&mut WidgetContainer<'expr>, &mut Nodes<'expr>)> {
         self.iter_mut().next()
     }
 }

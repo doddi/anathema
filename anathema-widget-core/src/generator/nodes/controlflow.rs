@@ -5,8 +5,8 @@ use crate::{Nodes, WidgetContainer};
 
 #[derive(Debug)]
 pub struct IfElse<'e> {
-    if_node: If<'e>,
-    elses: Vec<Else<'e>>,
+    pub(super) if_node: If<'e>,
+    pub(super) elses: Vec<Else<'e>>,
 }
 
 impl<'e> IfElse<'e> {
@@ -124,12 +124,12 @@ impl<'e> IfElse<'e> {
 #[derive(Debug)]
 pub struct If<'e> {
     cond: Value<bool>,
-    body: Nodes<'e>,
+    pub(super) body: Nodes<'e>,
     node_id: NodeId,
 }
 
 impl If<'_> {
-    fn is_true(&self) -> bool {
+    pub(super) fn is_true(&self) -> bool {
         self.cond.is_true()
     }
 
@@ -141,12 +141,12 @@ impl If<'_> {
 #[derive(Debug)]
 pub struct Else<'e> {
     cond: Option<Value<bool>>,
-    body: Nodes<'e>,
+    pub(super) body: Nodes<'e>,
     node_id: NodeId,
 }
 
 impl Else<'_> {
-    fn is_true(&self) -> bool {
+    pub(super) fn is_true(&self) -> bool {
         match &self.cond {
             None => true,
             Some(cond) => cond.is_true(),

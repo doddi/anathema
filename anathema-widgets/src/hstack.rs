@@ -1,10 +1,9 @@
 use anathema_render::Size;
-use anathema_values::{Context, ScopeValue, NodeId};
+use anathema_values::{Context, NodeId, Attributes, Value};
 use anathema_widget_core::contexts::{LayoutCtx, PositionCtx};
 use anathema_widget_core::error::Result;
-use anathema_widget_core::generator::Attributes;
 use anathema_widget_core::layout::{Direction, Layouts};
-use anathema_widget_core::{AnyWidget, Nodes, Widget, WidgetContainer, WidgetFactory};
+use anathema_widget_core::{AnyWidget, Nodes, Widget, WidgetContainer, WidgetFactory, FactoryContext};
 
 use crate::layout::horizontal::Horizontal;
 
@@ -27,28 +26,28 @@ use crate::layout::horizontal::Horizontal;
 /// ```text
 /// 1234
 /// ```
-#[derive(Debug, PartialEq)]
+#[derive(Debug)]
 pub struct HStack {
     /// If a width is provided then the layout constraints will be tight for width
-    pub width: Option<usize>,
+    pub width: Value<usize>,
     /// If a height is provided then the layout constraints will be tight for height
-    pub height: Option<usize>,
+    pub height: Value<usize>,
     /// The minimum width of the border. This will force the minimum constrained width to expand to
     /// this value.
-    pub min_width: Option<usize>,
+    pub min_width: Value<usize>,
     /// The minimum height of the border. This will force the minimum constrained height to expand to
     /// this value.
-    pub min_height: Option<usize>,
+    pub min_height: Value<usize>,
 }
 
 impl HStack {
     /// Create a new instance of an `HStack`.
-    pub fn new(width: impl Into<Option<usize>>, height: impl Into<Option<usize>>) -> Self {
+    pub fn new(width: Value<usize>, height: Value<usize>) -> Self {
         Self {
-            width: width.into(),
-            height: height.into(),
-            min_width: None,
-            min_height: None,
+            width,
+            height,
+            min_width: Value::Empty,
+            min_height: Value::Empty,
         }
     }
 }
@@ -58,26 +57,27 @@ impl Widget for HStack {
         "HStack"
     }
 
-    fn layout(
+    fn layout<'e>(
         &mut self,
-        children: &mut Nodes,
-        layout: &mut LayoutCtx,
-        data: Context<'_, '_>,
+        children: &mut Nodes<'e>,
+        layout: &LayoutCtx,
+        data: &Context<'_, 'e>,
     ) -> Result<Size> {
-        if let Some(width) = self.width {
+        let mut layout = *layout;
+        if let Some(width) = self.width.value() {
             layout.constraints.max_width = layout.constraints.max_width.min(width);
         }
-        if let Some(height) = self.height {
+        if let Some(height) = self.height.value() {
             layout.constraints.max_height = layout.constraints.max_height.min(height);
         }
-        if let Some(min_width) = self.min_width {
+        if let Some(min_width) = self.min_width.value() {
             layout.constraints.min_width = layout.constraints.min_width.max(min_width);
         }
-        if let Some(min_height) = self.min_height {
+        if let Some(min_height) = self.min_height.value() {
             layout.constraints.min_height = layout.constraints.min_height.max(min_height);
         }
 
-        Layouts::new(Horizontal::new(Direction::Forward), layout).layout(children, data)
+        Layouts::new(Horizontal::new(Direction::Forward), &layout).layout(children, data)
     }
 
     fn position<'tpl>(&mut self, children: &mut Nodes, ctx: PositionCtx) {
@@ -92,18 +92,12 @@ impl Widget for HStack {
 pub(crate) struct HStackFactory;
 
 impl WidgetFactory for HStackFactory {
-    fn make(
-        &self,
-        data: Context<'_, '_>,
-        attributes: &Attributes,
-        text: Option<&ScopeValue>,
-        node_id: &NodeId,
-    ) -> Result<Box<dyn AnyWidget>> {
-        let width = data.primitive("width", node_id.into(), attributes);
-        let height = data.primitive("height", node_id.into(), attributes);
+    fn make(&self, context: FactoryContext<'_>) -> Result<Box<dyn AnyWidget>> {
+        let width = context.get("width");
+        let height = context.get("height");
         let mut widget = HStack::new(width, height);
-        widget.min_width = data.primitive("min-width", node_id.into(), attributes);
-        widget.min_height = data.primitive("min-height", node_id.into(), attributes);
+        widget.min_width = context.get("min-width");
+        widget.min_height = context.get("min-height");
         Ok(Box::new(widget))
     }
 }

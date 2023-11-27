@@ -33,7 +33,7 @@ pub trait Widget {
     fn layout<'e>(
         &mut self,
         children: &mut Nodes<'e>,
-        ctx: &LayoutCtx,
+        layout: &LayoutCtx,
         data: &Context<'_, 'e>,
     ) -> Result<Size>;
 
