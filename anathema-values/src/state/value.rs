@@ -31,6 +31,11 @@ impl<T> StateValue<T> {
         }
     }
 
+    #[doc(hidden)]
+    pub fn get(&self, _: &Path, _: Option<&NodeId>) -> ValueRef<'_> {
+        ValueRef::Empty
+    }
+
     pub fn subscribe(&self, subscriber: NodeId) {
         self.subscribers.borrow_mut().insert(subscriber);
     }
@@ -40,7 +45,7 @@ impl<T> StateValue<T>
 where
     for<'b> &'b T: Into<ValueRef<'b>>,
 {
-    pub fn __anathema_get_value(&self, node_id: Option<&NodeId>) -> ValueRef<'_> {
+    pub fn get_value(&self, node_id: Option<&NodeId>) -> ValueRef<'_> {
         if let Some(node_id) = node_id.cloned() {
             self.subscribe(node_id);
         }

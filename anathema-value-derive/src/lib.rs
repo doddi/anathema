@@ -24,12 +24,11 @@ pub fn state_derive(strct: syn::ItemStruct) -> Result {
         # use ::anathema::values::{self, ValueRef, Path, state};
         impl state::State for #name {
             fn get(&self, key: &values::Path, node_id: Option<&values::NodeId>) -> values::ValueRef<'_> {
-                use state::BlanketGet;
                 match key {
                     Path::Key(s) => match s.as_str() {
                         #(
                             #field_names => {
-                                (&self.#field_idents).__anathema_get_value(node_id)
+                                self.#field_idents.get_value(node_id)
                             }
                         )*
                         _ => ValueRef::Empty,
@@ -41,7 +40,7 @@ pub fn state_derive(strct: syn::ItemStruct) -> Result {
                         match key.as_str() {
                         #(
                             #field_names => {
-                                (&self.#field_idents).__anathema_get(rhs, node_id)
+                                self.#field_idents.get(rhs, node_id)
                             }
                         )*
                             _ => ValueRef::Empty,
