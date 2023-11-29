@@ -185,16 +185,35 @@ impl ControlFlow {
     }
 }
 
+#[derive(Debug)]
+pub struct ViewExpr {
+    pub id: usize,
+    pub state: Option<ValueExpr>,
+    pub body: Vec<Expression>,
+}
+
+impl ViewExpr {
+    fn eval<'e>(&'e self, context: &Context<'_, 'e>, node_id: NodeId) -> Result<Node<'e>> {
+        panic!()
+        // let node = Node {
+        //     kind: NodeKind::View(
+        //         lookup_view(self.id)?,
+        //         Nodes::new(&self.expressions, node_id),
+        //     ),
+        //     node_id,
+        //     scope: context.new_scope(),
+        // };
+        // Ok(node)
+    }
+}
+
 // -----------------------------------------------------------------------------
 //   - Expression -
 // -----------------------------------------------------------------------------
 #[derive(Debug)]
 pub enum Expression {
     Node(SingleNode),
-    View {
-        ident: ValueExpr,
-        state: Option<ValueExpr>,
-    },
+    View(ViewExpr),
     Loop(LoopExpr),
     ControlFlow(ControlFlow),
 }
@@ -209,7 +228,7 @@ impl Expression {
             Self::Node(node) => node.eval(context, node_id),
             Self::Loop(loop_expr) => loop_expr.eval(context, node_id),
             Self::ControlFlow(controlflow) => controlflow.eval(context, node_id),
-            Self::View { ident, state } => panic!("views!"),
+            Self::View(view_expr) => view_expr.eval(context, node_id),
         }
     }
 }

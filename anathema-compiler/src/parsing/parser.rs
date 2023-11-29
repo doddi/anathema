@@ -10,7 +10,7 @@ use crate::{Constants, StringId, ValueId};
 pub enum Expression {
     LoadValue(ValueId),
     LoadAttribute { key: StringId, value: ValueId },
-    View(ValueId),
+    View(StringId),
     Node(StringId),
     For { data: ValueId, binding: StringId },
     If(ValueId),
@@ -228,11 +228,11 @@ impl<'src, 'consts> Parser<'src, 'consts> {
             return Ok(None);
         }
 
-        let string_id = self.read_ident()?;
+        let ident = self.read_ident()?;
 
         self.tokens.consume_indent();
         self.next_state();
-        Ok(Some(Expression::Node(string_id)))
+        Ok(Some(Expression::Node(ident)))
     }
 
     fn parse_for(&mut self) -> Result<Option<Expression>> {
@@ -290,13 +290,8 @@ impl<'src, 'consts> Parser<'src, 'consts> {
             self.tokens.consume();
             self.tokens.consume_indent();
 
-            let expr = expr(&mut self.tokens);
-            let value_expr = eval(expr, self.consts);
-            let ident = self.consts.store_value(value_expr);
+            let ident = self.read_ident()?;
             self.tokens.consume_indent();
-
-            // let id = self.constants.store_value(id);
-            // self.lexer.consume(true, false);
 
             self.next_state();
             self.next_state();

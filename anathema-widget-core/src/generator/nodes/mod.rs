@@ -8,6 +8,7 @@ pub(crate) use self::loops::LoopNode;
 use crate::contexts::LayoutCtx;
 use crate::error::Result;
 use crate::generator::expressions::Expression;
+use crate::views::AnyView;
 use crate::WidgetContainer;
 
 mod controlflow;
@@ -53,6 +54,15 @@ impl<'e> Node<'e> {
 
                 Ok(ControlFlow::Continue(()))
             }
+            NodeKind::View(_, nodes) => {
+                while let Some(res) = nodes.next(context, layout, f) {
+                    match res? {
+                        ControlFlow::Continue(()) => continue,
+                        ControlFlow::Break(()) => break,
+                    }
+                }
+                Ok(ControlFlow::Continue(()))
+            }
         }
     }
 
@@ -61,6 +71,7 @@ impl<'e> Node<'e> {
             NodeKind::Single(Single { children, .. }) => children.reset_cache(),
             NodeKind::Loop(loop_state) => loop_state.reset_cache(),
             NodeKind::ControlFlow(if_else) => if_else.reset_cache(),
+            NodeKind::View(_, nodes) => nodes.reset_cache(),
         }
     }
 
@@ -79,10 +90,11 @@ impl<'e> Node<'e> {
                 Change::Push => loop_node.push(),
                 _ => (),
             },
-            // NOTE: the control flow it self has no immediate information
+            // NOTE: the control flow and view has no immediate information
             // that needs updating, so an update should never end with the
             // control flow node
             NodeKind::ControlFlow(_) => {}
+            NodeKind::View(_, _) => todo!(),
         }
     }
 }
@@ -108,7 +120,7 @@ pub(crate) enum NodeKind<'e> {
     Single(Single<'e>),
     Loop(LoopNode<'e>),
     ControlFlow(IfElse<'e>),
-    // View(Box<dyn View>),
+    View(Box<dyn AnyView>, Nodes<'e>),
 }
 
 #[derive(Debug)]
@@ -216,6 +228,7 @@ impl<'expr> Nodes<'expr> {
                     }) => Box::new(once((widget, children))),
                     NodeKind::Loop(loop_state) => Box::new(loop_state.iter_mut()),
                     NodeKind::ControlFlow(control_flow) => Box::new(control_flow.iter_mut()),
+                    NodeKind::View(_, nodes) => todo!(),
                 }
             },
         )
@@ -232,6 +245,7 @@ fn count<'a>(nodes: impl Iterator<Item = &'a Node<'a>>) -> usize {
             NodeKind::Single(Single { children, .. }) => 1 + children.count(),
             NodeKind::Loop(loop_state) => loop_state.count(),
             NodeKind::ControlFlow(if_else) => if_else.count(),
+            NodeKind::View(_, nodes) => nodes.count(),
         })
         .sum()
 }
@@ -255,6 +269,7 @@ fn update(nodes: &mut [Node<'_>], node_id: &[usize], change: &Change, context: &
                 }
                 NodeKind::Loop(loop_node) => return loop_node.update(node_id, change, &context),
                 NodeKind::ControlFlow(if_else) => return if_else.update(node_id, change, &context),
+                NodeKind::View(_, nodes) => return nodes.update(node_id, change, &context),
             }
         }
     }

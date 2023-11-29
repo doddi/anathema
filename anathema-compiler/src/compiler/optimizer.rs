@@ -21,7 +21,10 @@ pub(crate) enum Expression {
         binding: StringId,
         size: usize,
     },
-    View(ValueId),
+    View {
+        ident: StringId,
+        scope_size: usize,
+    },
     LoadText(ValueId),
     LoadAttribute {
         key: StringId,
@@ -83,7 +86,15 @@ impl Optimizer {
                     continue;
                 }
                 &ParseExpr::View(ident) => {
-                    self.output.push(Expression::View(ident));
+                    let start = self.output.len();
+                    let scope_size = match self.input.get(self.ep) {
+                        Some(ParseExpr::ScopeStart) => {
+                            self.opt_scope();
+                            self.output.len() - start
+                        }
+                        _ => 0,
+                    };
+                    self.output.push(Expression::View { ident, scope_size });
                     continue;
                 }
                 &ParseExpr::Node(ident_index) => {

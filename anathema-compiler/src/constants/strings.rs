@@ -3,7 +3,7 @@ use std::fmt::Display;
 use super::Storage;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub struct StringId(usize);
+pub struct StringId(pub usize);
 
 impl From<usize> for StringId {
     fn from(n: usize) -> Self {

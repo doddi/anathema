@@ -1,7 +1,7 @@
 use anathema_compiler::{Constants, Instruction, StringId};
 use anathema_values::{Attributes, ValueExpr};
 use anathema_widget_core::generator::{
-    ControlFlow, ElseExpr, Expression, IfExpr, LoopExpr, SingleNode,
+    ControlFlow, ElseExpr, Expression, IfExpr, LoopExpr, SingleNode, ViewExpr,
 };
 
 use crate::error::Result;
@@ -29,19 +29,9 @@ impl<'vm> Scope<'vm> {
         loop {
             let instruction = self.instructions.remove(0);
             match instruction {
-                Instruction::View(ident) => {
-                    let ident = self.consts.lookup_value(ident).clone();
-
-                    let state = match self.instructions.get(0) {
-                        Some(Instruction::LoadValue(i)) => {
-                            let state = Some(self.consts.lookup_value(*i).clone());
-                            self.instructions.remove(0);
-                            state
-                        }
-                        _ => None,
-                    };
-
-                    nodes.push(Expression::View { ident, state });
+                Instruction::View { ident, scope_size } => {
+                    let view = self.view(ident, scope_size)?;
+                    nodes.push(view);
                 }
                 Instruction::Node { ident, scope_size } => {
                     nodes.push(self.node(ident, scope_size)?)
@@ -148,6 +138,29 @@ impl<'vm> Scope<'vm> {
             text,
             attributes,
             children,
+        });
+
+        Ok(node)
+    }
+
+    fn view(&mut self, ident: StringId, scope_size: usize) -> Result<Expression> {
+        let scope = self.instructions.drain(..scope_size).collect();
+
+        let state = match self.instructions.get(0) {
+            Some(Instruction::LoadValue(i)) => {
+                let val = self.consts.lookup_value(*i).clone();
+                let _ = self.instructions.remove(0);
+                Some(val)
+            }
+            _ => None,
+        };
+
+        let body = Scope::new(scope, &self.consts).exec()?;
+
+        let node = Expression::View(ViewExpr {
+            id: ident.0,
+            body,
+            state,
         });
 
         Ok(node)

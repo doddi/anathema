@@ -10,14 +10,9 @@ pub trait State {
     fn get(&self, key: &Path, node_id: Option<&NodeId>) -> ValueRef<'_>;
 
     #[doc(hidden)]
+    // This is here to keep the proc macro happy
     fn get_value(&self, _: Option<&NodeId>) -> ValueRef<'_> {
         ValueRef::Empty
-    }
-}
-
-impl State for Box<dyn State> {
-    fn get(&self, key: &Path, node_id: Option<&NodeId>) -> ValueRef<'_> {
-        self.deref().get(key, node_id)
     }
 }
 
