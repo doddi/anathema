@@ -9,6 +9,7 @@ use super::nodes::{IfElse, LoopNode, Single};
 use crate::error::Result;
 use crate::factory::FactoryContext;
 use crate::generator::nodes::{Node, NodeKind, Nodes};
+use crate::views::AnyView;
 use crate::{Display, Factory, Padding, Pos, WidgetContainer};
 
 mod controlflow;
@@ -192,18 +193,21 @@ pub struct ViewExpr {
     pub body: Vec<Expression>,
 }
 
+fn lookup_view(view_id: usize) -> Result<Box<dyn AnyView>> {
+    Ok(panic!())
+}
+
 impl ViewExpr {
     fn eval<'e>(&'e self, context: &Context<'_, 'e>, node_id: NodeId) -> Result<Node<'e>> {
-        panic!()
-        // let node = Node {
-        //     kind: NodeKind::View(
-        //         lookup_view(self.id)?,
-        //         Nodes::new(&self.expressions, node_id),
-        //     ),
-        //     node_id,
-        //     scope: context.new_scope(),
-        // };
-        // Ok(node)
+        let node = Node {
+            kind: NodeKind::View(
+                lookup_view(self.id)?,
+                Nodes::new(&self.body, node_id.clone()),
+            ),
+            node_id,
+            scope: context.new_scope(),
+        };
+        Ok(node)
     }
 }
 

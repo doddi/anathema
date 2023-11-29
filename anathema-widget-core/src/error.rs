@@ -26,4 +26,8 @@ pub enum Error {
     /// IO error
     #[error("{0}")]
     Io(#[from] std::io::Error),
+
+    /// Unregistered view
+    #[error("unregistered view")]
+    ViewNotFound,
 }

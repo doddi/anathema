@@ -2,6 +2,7 @@ use std::fmt::Display;
 
 use super::Storage;
 
+// TODO: maybe not make this public?
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct StringId(pub usize);
 
