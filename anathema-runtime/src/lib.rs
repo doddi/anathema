@@ -8,6 +8,7 @@ use anathema_widget_core::contexts::{LayoutCtx, PaintCtx};
 use anathema_widget_core::error::Result;
 use anathema_widget_core::generator::{make_it_so, Expression, Nodes};
 use anathema_widget_core::layout::Constraints;
+use anathema_widget_core::views::{TabIndex, Views, RegisteredViews};
 use anathema_widget_core::{Padding, Pos};
 use anathema_widgets::register_default_widgets;
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
@@ -26,6 +27,9 @@ pub mod events;
 pub struct Runtime<'e, E, ER, S> {
     pub enable_meta: bool,
     pub enable_mouse: bool,
+    tab_index: TabIndex,
+    views: Views,
+    registered_views: RegisteredViews,
     // views: V,
     state: S,
     screen: Screen,
@@ -68,6 +72,9 @@ where
 
         let inst = Self {
             output: stdout,
+            tab_index: TabIndex::new(),
+            views: Views::new(),
+            registered_views: RegisteredViews::new(),
             state,
             screen,
             constraints,
@@ -117,7 +124,7 @@ where
         let context = Context::root(&self.state);
 
         for (node_id, change) in dirty_nodes {
-            self.nodes.update(node_id.as_slice(), &change, &context);
+            self.nodes.update(node_id.as_slice(), &change, &context, &mut self.tab_index);
         }
 
         // TODO: finish this. Need to figure out a good way to notify that

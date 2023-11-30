@@ -6,7 +6,7 @@ pub mod layout;
 mod style;
 mod values;
 mod widget;
-mod views;
+pub mod views;
 
 // #[cfg(feature = "testing")]
 pub mod testing;

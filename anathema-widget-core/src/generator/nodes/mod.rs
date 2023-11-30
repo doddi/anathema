@@ -8,7 +8,7 @@ pub(crate) use self::loops::LoopNode;
 use crate::contexts::LayoutCtx;
 use crate::error::Result;
 use crate::generator::expressions::Expression;
-use crate::views::AnyView;
+use crate::views::{AnyView, RegisteredViews, TabIndex, Views};
 use crate::WidgetContainer;
 
 mod controlflow;
@@ -134,10 +134,22 @@ pub struct Nodes<'expr> {
 }
 
 impl<'expr> Nodes<'expr> {
-    fn new_node(&mut self, context: &Context<'_, 'expr>) -> Option<Result<()>> {
+    fn new_node(
+        &mut self,
+        context: &Context<'_, 'expr>,
+        tab_index: &mut TabIndex,
+        views: &mut Views,
+        registered_views: &RegisteredViews,
+    ) -> Option<Result<()>> {
         let expr = self.expressions.get(self.expr_index)?;
         self.expr_index += 1;
-        match expr.eval(&context, self.next_id.next()) {
+        match expr.eval(
+            &context,
+            self.next_id.next(),
+            tab_index,
+            views,
+            registered_views,
+        ) {
             Ok(node) => self.inner.push(node),
             Err(e) => return Some(Err(e)),
         };
@@ -190,8 +202,14 @@ impl<'expr> Nodes<'expr> {
     }
 
     // TODO: move this into a visitor?
-    pub fn update(&mut self, node_id: &[usize], change: &Change, context: &Context<'_, '_>) {
-        update(&mut self.inner, node_id, change, context);
+    pub fn update(
+        &mut self,
+        node_id: &[usize],
+        change: &Change,
+        context: &Context<'_, '_>,
+        tab_index: &mut TabIndex,
+    ) {
+        update(&mut self.inner, node_id, change, context, tab_index);
     }
 
     pub(crate) fn new(expressions: &'expr [Expression], next_id: NodeId) -> Self {
@@ -217,6 +235,17 @@ impl<'expr> Nodes<'expr> {
         }
     }
 
+    fn node_ids(&self) -> impl Iterator<Item = &NodeId> + '_ {
+        self.inner.iter().flat_map(|node| match &node.kind {
+            NodeKind::Single(Single {
+                widget, children, ..
+            }) => Box::new(std::iter::once(&node.node_id).chain(children.node_ids())),
+            NodeKind::Loop(loop_state) => loop_state.node_ids(),
+            NodeKind::ControlFlow(control_flow) => control_flow.node_ids(),
+            NodeKind::View(_, nodes) => Box::new(nodes.node_ids()),
+        })
+    }
+
     pub fn iter_mut(
         &mut self,
     ) -> impl Iterator<Item = (&mut WidgetContainer<'expr>, &mut Nodes<'expr>)> + '_ {
@@ -228,7 +257,7 @@ impl<'expr> Nodes<'expr> {
                     }) => Box::new(once((widget, children))),
                     NodeKind::Loop(loop_state) => Box::new(loop_state.iter_mut()),
                     NodeKind::ControlFlow(control_flow) => Box::new(control_flow.iter_mut()),
-                    NodeKind::View(_, nodes) => todo!(),
+                    NodeKind::View(_, nodes) => Box::new(nodes.iter_mut()),
                 }
             },
         )
@@ -251,7 +280,13 @@ fn count<'a>(nodes: impl Iterator<Item = &'a Node<'a>>) -> usize {
 }
 
 // Apply change / update to relevant nodes
-fn update(nodes: &mut [Node<'_>], node_id: &[usize], change: &Change, context: &Context<'_, '_>) {
+fn update(
+    nodes: &mut [Node<'_>],
+    node_id: &[usize],
+    change: &Change,
+    context: &Context<'_, '_>,
+    tab_index: &mut TabIndex,
+) {
     for node in nodes {
         if node.node_id.contains(node_id) {
             // Found the node to update
@@ -265,11 +300,17 @@ fn update(nodes: &mut [Node<'_>], node_id: &[usize], change: &Change, context: &
 
             match &mut node.kind {
                 NodeKind::Single(Single { children, .. }) => {
-                    return children.update(&node_id, change, &context)
+                    return children.update(&node_id, change, &context, tab_index)
                 }
-                NodeKind::Loop(loop_node) => return loop_node.update(node_id, change, &context),
-                NodeKind::ControlFlow(if_else) => return if_else.update(node_id, change, &context),
-                NodeKind::View(_, nodes) => return nodes.update(node_id, change, &context),
+                NodeKind::Loop(loop_node) => {
+                    return loop_node.update(node_id, change, &context, tab_index)
+                }
+                NodeKind::ControlFlow(if_else) => {
+                    return if_else.update(node_id, change, &context, tab_index)
+                }
+                NodeKind::View(_, nodes) => {
+                    return nodes.update(node_id, change, &context, tab_index)
+                }
             }
         }
     }

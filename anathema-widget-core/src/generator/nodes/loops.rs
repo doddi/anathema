@@ -10,6 +10,7 @@ use crate::error::Result;
 use crate::generator::expressions::Collection;
 use crate::generator::Expression;
 use crate::WidgetContainer;
+use crate::views::TabIndex;
 
 #[derive(Debug)]
 pub(in crate::generator) struct Iteration<'e> {
@@ -135,6 +136,11 @@ impl<'e> LoopNode<'e> {
         }
         self.value_index -= 1;
         self.current_iteration = self.iterations.len() - 1;
+        // Remove the iteration
+        // Remove all the views inside the iteration
+        // that are currently in:
+        // * TabIndex
+        // * Views
         self.iterations.remove(index);
     }
 
@@ -156,10 +162,15 @@ impl<'e> LoopNode<'e> {
         self.iterations.iter_mut().flat_map(|i| i.body.iter_mut())
     }
 
-    pub(super) fn update(&mut self, node_id: &[usize], change: &Change, context: &Context<'_, '_>) {
+    pub(super) fn node_ids(&self) -> Box<dyn Iterator<Item = &NodeId> + '_> {
+        Box::new(self.iterations.iter().flat_map(|i| i.body.node_ids()))
+    }
+
+
+    pub(super) fn update(&mut self, node_id: &[usize], change: &Change, context: &Context<'_, '_>, tab_index: &mut TabIndex) {
         for iter in &mut self.iterations {
             if iter.node_id.contains(node_id) {
-                iter.body.update(node_id, change, context);
+                iter.body.update(node_id, change, context, tab_index);
                 break;
             }
         }

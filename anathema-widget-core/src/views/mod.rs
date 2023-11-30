@@ -5,11 +5,17 @@ use anathema_values::NodeId;
 
 use crate::error::{Error, Result};
 
-struct GiveThisASensibleName {
+pub struct RegisteredViews {
     inner: Vec<Box<dyn Fn() -> Box<dyn AnyView>>>,
 }
 
-impl GiveThisASensibleName {
+impl RegisteredViews {
+    pub fn new() -> Self {
+        Self {
+            inner: Vec::new(),
+        }
+    }
+
     pub fn add<T, F>(&mut self, f: F)
     where
         F: 'static + Fn() -> T,
@@ -18,7 +24,7 @@ impl GiveThisASensibleName {
         self.inner.push(Box::new(move || Box::new(f())));
     }
 
-    pub fn blargh(&self, id: usize) -> Result<Box<dyn AnyView>> {
+    pub fn get(&self, id: usize) -> Result<Box<dyn AnyView>> {
         match self.inner.get(id) {
             None => Err(Error::ViewNotFound),
             Some(f) => Ok(f()),
@@ -26,7 +32,7 @@ impl GiveThisASensibleName {
     }
 }
 
-struct TabIndex {
+pub struct TabIndex {
     inner: BTreeSet<NodeId>,
     current: usize,
 }
@@ -46,12 +52,20 @@ impl TabIndex {
         }
     }
 
-    fn insert(&mut self, node_id: NodeId) {
+    pub(crate) fn insert(&mut self, node_id: NodeId) {
         self.inner.insert(node_id);
     }
 
     fn remove(&mut self, node_id: &NodeId) {
         self.inner.remove(node_id);
+    }
+
+    pub(crate) fn remove_all<'a>(&mut self, node_ids: impl Iterator<Item = &'a NodeId>) {
+        node_ids.for_each(|id| self.remove(id));
+    }
+
+    pub(crate) fn add_all<'a>(&mut self, node_ids: impl Iterator<Item = &'a NodeId>) {
+        node_ids.cloned().for_each(|id| self.insert(id));
     }
 }
 
@@ -66,7 +80,7 @@ impl Views {
         }
     }
 
-    fn insert(&mut self, node_id: NodeId) {
+    pub(crate) fn insert(&mut self, node_id: NodeId) {
         self.inner.insert(node_id);
     }
 

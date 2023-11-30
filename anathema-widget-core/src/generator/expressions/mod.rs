@@ -9,10 +9,15 @@ use super::nodes::{IfElse, LoopNode, Single};
 use crate::error::Result;
 use crate::factory::FactoryContext;
 use crate::generator::nodes::{Node, NodeKind, Nodes};
-use crate::views::AnyView;
+use crate::views::{AnyView, RegisteredViews, TabIndex, Views};
 use crate::{Display, Factory, Padding, Pos, WidgetContainer};
 
 mod controlflow;
+
+struct DoesEverything {
+    views: Views,
+    tab_index: TabIndex,
+}
 
 // -----------------------------------------------------------------------------
 //   - A single Node -
@@ -53,6 +58,7 @@ impl SingleNode {
             padding: Padding::ZERO,                // context.padding(),
             pos: Pos::ZERO,
             size: Size::ZERO,
+
             node_id: node_id.clone(),
             inner: Factory::exec(context)?,
             expr: None,
@@ -193,15 +199,20 @@ pub struct ViewExpr {
     pub body: Vec<Expression>,
 }
 
-fn lookup_view(view_id: usize) -> Result<Box<dyn AnyView>> {
-    Ok(panic!())
-}
-
 impl ViewExpr {
-    fn eval<'e>(&'e self, context: &Context<'_, 'e>, node_id: NodeId) -> Result<Node<'e>> {
+    fn eval<'e>(
+        &'e self,
+        context: &Context<'_, 'e>,
+        node_id: NodeId,
+        tab_index: &mut TabIndex,
+        views: &mut Views,
+        registered_views: &RegisteredViews,
+    ) -> Result<Node<'e>> {
+        tab_index.insert(node_id.clone());
+        views.insert(node_id.clone());
         let node = Node {
             kind: NodeKind::View(
-                lookup_view(self.id)?,
+                registered_views.get(self.id)?,
                 Nodes::new(&self.body, node_id.clone()),
             ),
             node_id,
@@ -227,12 +238,15 @@ impl Expression {
         &'expr self,
         context: &Context<'a, 'expr>,
         node_id: NodeId,
+        tab_index: &mut TabIndex,
+        views: &mut Views,
+        registered_views: &RegisteredViews,
     ) -> Result<Node<'expr>> {
         match self {
             Self::Node(node) => node.eval(context, node_id),
             Self::Loop(loop_expr) => loop_expr.eval(context, node_id),
             Self::ControlFlow(controlflow) => controlflow.eval(context, node_id),
-            Self::View(view_expr) => view_expr.eval(context, node_id),
+            Self::View(view_expr) => view_expr.eval(context, node_id, tab_index, views, registered_views),
         }
     }
 }

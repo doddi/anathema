@@ -1,6 +1,7 @@
-use anathema_values::{Change, Context, DynValue, NodeId, Value, Resolver};
+use anathema_values::{Change, Context, DynValue, NodeId, Resolver, Value};
 
 use crate::generator::expressions::{ElseExpr, IfExpr};
+use crate::views::TabIndex;
 use crate::{Nodes, WidgetContainer};
 
 #[derive(Debug)]
@@ -18,6 +19,7 @@ impl<'e> IfElse<'e> {
     ) -> Self {
         let mut if_node = If {
             cond: bool::init_value(context, Some(&node_id), &if_expr.cond),
+            previous: false,
             body: Nodes::new(&if_expr.expressions, node_id.child(0)),
             node_id,
         };
@@ -31,6 +33,7 @@ impl<'e> IfElse<'e> {
                         .cond
                         .as_ref()
                         .map(|expr| bool::init_value(context, Some(&node_id), expr)),
+                    previous: false,
                     body: Nodes::new(&e.expressions, node_id.child(0)),
                     node_id,
                 }
@@ -38,6 +41,7 @@ impl<'e> IfElse<'e> {
             .collect::<Vec<_>>();
 
         if_node.resolve(context);
+        if_node.previous = if_node.cond.value_or_default();
 
         if !if_node.is_true() {
             for el in &mut elses {
@@ -87,6 +91,12 @@ impl<'e> IfElse<'e> {
             .flat_map(|nodes| nodes.iter_mut())
     }
 
+    pub(super) fn node_ids(
+        &self,
+    ) -> Box<dyn Iterator<Item = &NodeId> + '_> {
+        Box::new(self.body().into_iter().flat_map(|nodes| nodes.node_ids()))
+    }
+
     pub(super) fn reset_cache(&mut self) {
         self.if_node.body.reset_cache();
         self.elses.iter_mut().for_each(|e| e.body.reset_cache());
@@ -96,13 +106,22 @@ impl<'e> IfElse<'e> {
         self.body().map(|nodes| nodes.count()).unwrap_or(0)
     }
 
-    pub(super) fn update(&mut self, node_id: &[usize], change: &Change, context: &Context<'_, '_>) {
+    pub(super) fn update(&mut self, node_id: &[usize], change: &Change, context: &Context<'_, '_>, tab_index: &mut TabIndex) {
         // If
         if self.if_node.node_id.contains(node_id) {
             if self.if_node.node_id.eq(node_id) {
                 self.if_node.resolve(context);
+                let current = self.if_node.cond.value_or_default();
+                if self.if_node.previous != current && !current {
+                    // remove from tab index
+                    tab_index.remove_all(self.if_node.body.node_ids());
+                } else {
+                    // add to tab index
+                    tab_index.add_all(self.if_node.body.node_ids());
+                }
+                self.if_node.previous = current;
             } else {
-                self.if_node.body.update(node_id, change, context);
+                self.if_node.body.update(node_id, change, context, tab_index);
             }
         }
 
@@ -111,8 +130,17 @@ impl<'e> IfElse<'e> {
             if e.node_id.contains(node_id) {
                 if e.node_id.eq(node_id) {
                     e.resolve(context);
+                    let current = self.if_node.cond.value_or_default();
+                    if e.previous != current && !current {
+                        // remove from tab index
+                        tab_index.remove_all(e.body.node_ids());
+                    } else {
+                        // add to tab index
+                        tab_index.add_all(e.body.node_ids());
+                    }
+                    e.previous = current;
                 } else {
-                    e.body.update(node_id, change, context);
+                    e.body.update(node_id, change, context, tab_index);
                 }
 
                 break;
@@ -124,6 +152,7 @@ impl<'e> IfElse<'e> {
 #[derive(Debug)]
 pub struct If<'e> {
     cond: Value<bool>,
+    previous: bool,
     pub(super) body: Nodes<'e>,
     node_id: NodeId,
 }
@@ -141,6 +170,7 @@ impl If<'_> {
 #[derive(Debug)]
 pub struct Else<'e> {
     cond: Option<Value<bool>>,
+    previous: bool,
     pub(super) body: Nodes<'e>,
     node_id: NodeId,
 }
