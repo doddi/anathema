@@ -1,4 +1,5 @@
 use std::any::Any;
+use std::collections::BTreeSet;
 
 use anathema_values::NodeId;
 
@@ -25,8 +26,53 @@ impl GiveThisASensibleName {
     }
 }
 
+struct TabIndex {
+    inner: BTreeSet<NodeId>,
+    current: usize,
+}
+
+impl TabIndex {
+    pub fn new() -> Self {
+        Self {
+            inner: BTreeSet::new(),
+            current: 0,
+        }
+    }
+
+    fn next(&mut self) {
+        self.current += 1;
+        if self.current == self.inner.len() {
+            self.current = 0;
+        }
+    }
+
+    fn insert(&mut self, node_id: NodeId) {
+        self.inner.insert(node_id);
+    }
+
+    fn remove(&mut self, node_id: &NodeId) {
+        self.inner.remove(node_id);
+    }
+}
+
 pub struct Views {
-    inner: Vec<NodeId>,
+    inner: BTreeSet<NodeId>,
+}
+
+impl Views {
+    pub fn new() -> Self {
+        Self {
+            inner: BTreeSet::new(),
+        }
+    }
+
+    fn insert(&mut self, node_id: NodeId) {
+        self.inner.insert(node_id);
+    }
+
+    fn remove(&mut self, node_id: &NodeId) {
+        self.inner.remove(node_id);
+    }
 }
 
 pub trait View: Copy {

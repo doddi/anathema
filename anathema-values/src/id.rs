@@ -4,6 +4,7 @@
 //       or even Arc<[usize]>, given that both the `WidgetContainer`
 //       and the wrapping `Node` has the same id, and these ids are
 //       shared with the ids tracking the changes.
+#[derive(PartialOrd, Ord)]
 pub struct NodeId(Vec<usize>);
 
 impl NodeId {
