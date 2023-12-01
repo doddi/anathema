@@ -172,9 +172,10 @@ impl<'expr> Nodes<'expr> {
                 Some(val)
             }
             None => {
-                if let Err(e) = self.new_node(context)? {
-                    return Some(Err(e));
-                }
+                panic!("this can be implemented once the layout node thing is done");
+                // if let Err(e) = self.new_node(context)? {
+                //     return Some(Err(e));
+                // }
                 self.next(context, layout, f)
             }
         }

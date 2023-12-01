@@ -11,9 +11,11 @@ pub use self::padding::Padding;
 use crate::contexts::LayoutCtx;
 use crate::error::Result;
 use crate::generator::Nodes;
+pub use layoutnodes::{LayoutNodes, LayoutNode};
 
 mod constraints;
 mod padding;
+mod layoutnodes;
 
 pub trait Layout {
     fn layout<'e>(
