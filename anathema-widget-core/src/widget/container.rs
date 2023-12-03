@@ -10,7 +10,7 @@ use crate::contexts::{LayoutCtx, PaintCtx, PositionCtx, Unsized, WithSize};
 use crate::error::Result;
 use crate::generator::{Expression, Nodes};
 use crate::layout::Constraints;
-use crate::{Display, LocalPos, Padding, Pos, Region};
+use crate::{Display, LocalPos, Padding, Pos, Region, LayoutNodes};
 
 /// The `WidgetContainer` has to go through three steps before it can be displayed:
 /// * [`layout`](Self::layout)
@@ -122,7 +122,8 @@ impl WidgetContainer<'_> {
             Display::Exclude => self.size = Size::ZERO,
             _ => {
                 let layout = LayoutCtx::new(constraints, self.padding);
-                let size = self.inner.layout(children, &layout, data)?;
+                let nodes = LayoutNodes::new(children, constraints, self.padding, data);
+                let size = self.inner.layout(nodes)?;
 
                 // TODO: we should compare the new size with the old size
                 //       to determine if the layout needs to propagate outwards

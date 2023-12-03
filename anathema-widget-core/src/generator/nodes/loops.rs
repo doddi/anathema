@@ -86,8 +86,8 @@ impl<'e> LoopNode<'e> {
                 }
             };
 
-            while let Some(res) = iter.body.next(&context, layout, f) {
-                match res? {
+            while let Ok(res) = iter.body.next(&context, layout, f) {
+                match res {
                     ControlFlow::Continue(()) => continue,
                     ControlFlow::Break(()) => break,
                 }

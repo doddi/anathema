@@ -33,9 +33,7 @@ impl<'e> Node<'e> {
         F: FnMut(&mut WidgetContainer<'e>, &mut Nodes<'e>, &Context<'_, 'e>) -> Result<()>,
     {
         match &mut self.kind {
-            NodeKind::Single(Single {
-                widget, children, ..
-            }) => {
+            NodeKind::Single(Single { widget, children, .. }) => {
                 f(widget, children, context)?;
                 Ok(ControlFlow::Continue(()))
             }
@@ -45,8 +43,8 @@ impl<'e> Node<'e> {
                     return Ok(ControlFlow::Break(()));
                 };
 
-                while let Some(res) = body.next(context, layout, f) {
-                    match res? {
+                while let Ok(res) = body.next(context, layout, f) {
+                    match res {
                         ControlFlow::Continue(()) => continue,
                         ControlFlow::Break(()) => break,
                     }
@@ -55,8 +53,8 @@ impl<'e> Node<'e> {
                 Ok(ControlFlow::Continue(()))
             }
             NodeKind::View(_, nodes) => {
-                while let Some(res) = nodes.next(context, layout, f) {
-                    match res? {
+                while let Ok(res) = nodes.next(context, layout, f) {
+                    match res {
                         ControlFlow::Continue(()) => continue,
                         ControlFlow::Break(()) => break,
                     }
@@ -161,15 +159,14 @@ impl<'expr> Nodes<'expr> {
         context: &Context<'_, 'expr>,
         layout: &LayoutCtx,
         f: &mut F,
-    ) -> Option<Result<ControlFlow<(), ()>>>
+    ) -> Result<ControlFlow<(), ()>>
     where
         F: FnMut(&mut WidgetContainer<'expr>, &mut Nodes<'expr>, &Context<'_, 'expr>) -> Result<()>,
     {
         match self.inner.get_mut(self.cache_index) {
             Some(n) => {
                 self.cache_index += 1;
-                let val = n.next(context, layout, f);
-                Some(val)
+                n.next(context, layout, f)
             }
             None => {
                 panic!("this can be implemented once the layout node thing is done");
@@ -191,8 +188,8 @@ impl<'expr> Nodes<'expr> {
         F: FnMut(&mut WidgetContainer<'expr>, &mut Nodes<'expr>, &Context<'_, 'expr>) -> Result<()>,
     {
         loop {
-            if let Some(res) = self.next(context, layout, &mut f) {
-                match res? {
+            if let Ok(res) = self.next(context, layout, &mut f) {
+                match res {
                     ControlFlow::Continue(()) => continue,
                     ControlFlow::Break(()) => break,
                 }

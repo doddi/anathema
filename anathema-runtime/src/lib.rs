@@ -2,14 +2,14 @@ use std::io::{stdout, Stdout};
 use std::time::Instant;
 
 use anathema_render::{size, Screen, Size};
-use anathema_values::{drain_dirty_nodes, Context};
 use anathema_values::state::State;
+use anathema_values::{drain_dirty_nodes, Context};
 use anathema_widget_core::contexts::{LayoutCtx, PaintCtx};
 use anathema_widget_core::error::Result;
 use anathema_widget_core::generator::{make_it_so, Expression, Nodes};
 use anathema_widget_core::layout::Constraints;
-use anathema_widget_core::views::{TabIndex, Views, RegisteredViews};
-use anathema_widget_core::{Padding, Pos};
+use anathema_widget_core::views::{RegisteredViews, TabIndex, Views};
+use anathema_widget_core::{LayoutNodes, Padding, Pos};
 use anathema_widgets::register_default_widgets;
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
 use events::Event;
@@ -91,15 +91,14 @@ where
 
     // TODO: move this into views
     fn layout(&mut self) -> Result<()> {
-        let mut layout_ctx = LayoutCtx::new(self.constraints, Padding::ZERO);
         self.nodes.reset_cache();
-        let constraints = layout_ctx.constraints;
         let context = Context::root(&self.state);
-        self.nodes
-            .for_each(&context, &mut layout_ctx, |widget, children, context| {
-                widget.layout(children, constraints, context)?;
-                Ok(())
-            });
+        let nodes = LayoutNodes::new(&mut self.nodes, self.constraints, Padding::ZERO, &context);
+
+        nodes.for_each(|node| {
+            node.layout(children, constraints, context)?;
+            Ok(())
+        });
         Ok(())
     }
 
@@ -124,7 +123,8 @@ where
         let context = Context::root(&self.state);
 
         for (node_id, change) in dirty_nodes {
-            self.nodes.update(node_id.as_slice(), &change, &context, &mut self.tab_index);
+            self.nodes
+                .update(node_id.as_slice(), &change, &context, &mut self.tab_index);
         }
 
         // TODO: finish this. Need to figure out a good way to notify that

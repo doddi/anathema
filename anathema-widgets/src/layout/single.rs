@@ -4,23 +4,20 @@ use anathema_widget_core::contexts::LayoutCtx;
 use anathema_widget_core::error::{Error, Result};
 use anathema_widget_core::generator::Nodes;
 use anathema_widget_core::layout::{Constraints, Layout};
-use anathema_widget_core::WidgetContainer;
+use anathema_widget_core::{WidgetContainer, LayoutNodes};
 
 pub struct Single;
 
 impl Layout for Single {
-    fn layout<'e>(
+    fn layout<'nodes, 'expr, 'state>(
         &mut self,
-        children: &mut Nodes<'e>,
-        layout: &LayoutCtx,
-        data: &Context<'_, 'e>,
+        nodes: LayoutNodes<'nodes, 'expr, 'state>,
     ) -> Result<Size> {
-        let constraints = layout.padded_constraints();
+        let constraints = nodes.padded_constraints();
         let mut size = Size::ZERO;
 
-        children.next(data, layout, &mut |widget, children, context| {
-            let widget_size = widget.layout(children, constraints, context)?;
-            size = widget_size;
+        nodes.next(|widget| {
+            size = widget.layout(constraints)?;
             Ok(())
         });
 

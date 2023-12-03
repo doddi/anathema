@@ -18,11 +18,12 @@ mod padding;
 mod layoutnodes;
 
 pub trait Layout {
-    fn layout<'e>(
+    fn layout<'nodes, 'expr, 'state>(
         &mut self,
-        children: &mut Nodes<'e>,
-        layout: &LayoutCtx,
-        data: &Context<'_, 'e>,
+        nodes: LayoutNodes<'nodes, 'expr, 'state>,
+        // children: &mut Nodes<'e>,
+        // layout: &LayoutCtx,
+        // data: &Context<'_, 'e>,
     ) -> crate::error::Result<Size>;
 }
 
@@ -45,7 +46,8 @@ impl<'ctx, T: Layout> Layouts<'ctx, T> {
     }
 
     pub fn layout<'e>(&mut self, children: &mut Nodes<'e>, data: &Context<'_, 'e>) -> Result<Size> {
-        self.layout.layout(children, self.layout_ctx, data)
+        panic!()
+        // self.layout.layout(children, self.layout_ctx, data)
     }
 
     pub fn expand_horz(&mut self, mut size: Size) -> Size {

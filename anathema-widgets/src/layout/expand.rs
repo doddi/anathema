@@ -3,7 +3,7 @@ use anathema_values::{Context, Value};
 use anathema_widget_core::contexts::LayoutCtx;
 use anathema_widget_core::error::Result;
 use anathema_widget_core::layout::{Axis, Constraints};
-use anathema_widget_core::{Nodes, WidgetContainer};
+use anathema_widget_core::{LayoutNodes, Nodes, WidgetContainer};
 
 use crate::Expand;
 
@@ -45,20 +45,20 @@ fn distribute_size(weights: &[usize], mut total: usize) -> Vec<usize> {
     indexed.into_iter().map(|(_, _, r)| r).collect()
 }
 
-pub fn layout<'e>(
-    ctx: &LayoutCtx,
-    children: &mut Nodes<'e>,
+pub fn layout<'nodes, 'state, 'expr>(
+    nodes: LayoutNodes<'nodes, 'state, 'expr>,
+    // ctx: &LayoutCtx,
+    // children: &mut Nodes<'e>,
     axis: Axis,
-    data: &Context<'_, 'e>,
+    // data: &Context<'_, 'e>,
 ) -> Result<Size> {
-    let expansions = children
-        .iter_mut()
-        .filter(|(c, _)| c.kind() == Expand::KIND)
+    let expansions = nodes
+        .filter(|node| node.kind() == Expand::KIND)
         .collect::<Vec<_>>();
 
     let factors = expansions
         .iter()
-        .map(|(w, _)| w.to_ref::<Expand>().factor.value_or_default())
+        .map(|w| w.to_ref::<Expand>().factor.value_or_default())
         .collect::<Vec<_>>();
 
     let mut size = Size::ZERO;
@@ -68,12 +68,13 @@ pub fn layout<'e>(
     }
 
     // Distribute the available space
+    
     let sizes = match axis {
-        Axis::Horizontal => distribute_size(&factors, ctx.constraints.max_width),
-        Axis::Vertical => distribute_size(&factors, ctx.constraints.max_height),
+        Axis::Horizontal => distribute_size(&factors, nodes.constraints.max_width),
+        Axis::Vertical => distribute_size(&factors, nodes.constraints.max_height),
     };
 
-    for (sub_size, (expanded_widget, nodes)) in std::iter::zip(sizes, expansions) {
+    for (sub_size, widget) in std::iter::zip(sizes, expansions) {
         let constraints = match axis {
             Axis::Horizontal => {
                 let mut constraints = Constraints::new(sub_size, ctx.constraints.max_height);
@@ -91,7 +92,7 @@ pub fn layout<'e>(
             }
         };
 
-        let widget_size = expanded_widget.layout(nodes, constraints, &data)?;
+        let widget_size = widget.layout(constraints)?;
 
         match axis {
             Axis::Horizontal => {

@@ -3,18 +3,16 @@ use anathema_values::Context;
 use anathema_widget_core::contexts::LayoutCtx;
 use anathema_widget_core::error::Result;
 use anathema_widget_core::layout::{Axis, Layout};
-use anathema_widget_core::{Nodes, WidgetContainer};
+use anathema_widget_core::{LayoutNodes, Nodes, WidgetContainer};
 
 use crate::Spacer;
 
 pub struct SpacerLayout;
 
 impl Layout for SpacerLayout {
-    fn layout(
+    fn layout<'nodes, 'expr, 'state>(
         &mut self,
-        children: &mut Nodes<'_>,
-        layout: &LayoutCtx,
-        data: &Context<'_, '_>,
+        nodes: LayoutNodes<'nodes, 'expr, 'state>,
     ) -> Result<Size> {
         let size = Size::new(layout.constraints.min_width, layout.constraints.min_height);
         Ok(size)
@@ -26,23 +24,22 @@ impl Layout for SpacerLayout {
 /// does the layout of the child of a single [`Spacer`],
 /// whereas this does the layout of multiple [`Spacer`]s
 /// inside already evaluated children.
-pub fn layout<'e>(
-    ctx: &LayoutCtx,
-    children: &mut Nodes<'e>,
+pub fn layout<'nodes, 'expr, 'state>(
+    nodes: LayoutNodes<'nodes, 'expr, 'state>,
+    // ctx: &LayoutCtx,
+    // children: &mut Nodes<'e>,
     axis: Axis,
-    data: &Context<'_, 'e>,
+    // data: &Context<'_, 'e>,
 ) -> Result<Size> {
     let mut final_size = Size::ZERO;
-    let count = children
-        .iter_mut()
-        .filter(|(c, _)| c.kind() == Spacer::KIND)
-        .count();
+    let count = nodes.filter(|widget| widget.kind() == Spacer::KIND).count();
 
     if count == 0 {
         return Ok(final_size);
     }
 
-    let mut constraints = ctx.constraints;
+    // TODO: should these be padded?
+    let mut constraints = nodes.padded_constraints();
     match axis {
         Axis::Horizontal => {
             constraints.max_width /= count;
@@ -53,12 +50,10 @@ pub fn layout<'e>(
             constraints.min_height = constraints.max_height;
         }
     };
+    nodes.set_constraints(constraints);
 
-    for (spacer, nodes) in children
-        .iter_mut()
-        .filter(|(c, _)| c.kind() == Spacer::KIND)
-    {
-        let size = spacer.layout(nodes, constraints, data)?;
+    for spacer in nodes.filter(|widget| widget.kind() == Spacer::KIND) {
+        let size = spacer.layout(constraints)?;
 
         match axis {
             Axis::Horizontal => {
