@@ -8,7 +8,7 @@ use anathema_widget_core::contexts::{LayoutCtx, PaintCtx};
 use anathema_widget_core::error::Result;
 use anathema_widget_core::generator::{make_it_so, Expression, Nodes};
 use anathema_widget_core::layout::Constraints;
-use anathema_widget_core::views::{RegisteredViews, TabIndex, Views};
+use anathema_widget_core::views::{AnyView, RegisteredViews, TabIndex, View, ViewFn, Views};
 use anathema_widget_core::{LayoutNodes, Padding, Pos};
 use anathema_widgets::register_default_widgets;
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
@@ -87,7 +87,8 @@ where
     fn layout(&mut self) -> Result<()> {
         self.nodes.reset_cache();
         let context = Context::root(&self.state);
-        let mut nodes = LayoutNodes::new(&mut self.nodes, self.constraints, Padding::ZERO, &context);
+        let mut nodes =
+            LayoutNodes::new(&mut self.nodes, self.constraints, Padding::ZERO, &context);
 
         nodes.for_each(|mut node| {
             node.layout(self.constraints)?;
@@ -118,8 +119,7 @@ where
         let context = Context::root(&self.state);
 
         for (node_id, change) in dirty_nodes {
-            self.nodes
-                .update(node_id.as_slice(), &change, &context);
+            self.nodes.update(node_id.as_slice(), &change, &context);
         }
 
         // TODO: finish this. Need to figure out a good way to notify that
@@ -189,5 +189,13 @@ where
 
             if self.enable_meta {}
         }
+    }
+
+    pub fn register_view<F, T>(&self, id: &str, view: F)
+    where
+        F: Send + 'static + Fn() -> T,
+        T: 'static + View
+    {
+        RegisteredViews::add(id.to_string(), view)
     }
 }

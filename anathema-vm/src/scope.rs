@@ -144,6 +144,7 @@ impl<'vm> Scope<'vm> {
     }
 
     fn view(&mut self, ident: StringId, scope_size: usize) -> Result<Expression> {
+        let ident = self.consts.lookup_string(ident).to_owned();
         let scope = self.instructions.drain(..scope_size).collect();
 
         let state = match self.instructions.get(0) {
@@ -158,7 +159,7 @@ impl<'vm> Scope<'vm> {
         let body = Scope::new(scope, &self.consts).exec()?;
 
         let node = Expression::View(ViewExpr {
-            id: ident.0,
+            id: ident,
             body,
             state,
         });

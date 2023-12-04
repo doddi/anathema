@@ -3,33 +3,35 @@ use std::collections::BTreeSet;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, OnceLock};
 
+use anathema_values::hashmap::HashMap;
 use anathema_values::NodeId;
 use parking_lot::Mutex;
 
 use crate::error::{Error, Result};
 
-type Lol = dyn Fn() -> Box<dyn AnyView> + Send;
+pub type ViewFn = dyn Fn() -> Box<dyn AnyView> + Send;
 
 static TAB_INDEX: AtomicUsize = AtomicUsize::new(0);
 static TAB_VIEWS: OnceLock<Mutex<BTreeSet<NodeId>>> = OnceLock::new();
-static REGISTERED_VIEWS: Mutex<Vec<Box<Lol>>> = Mutex::new(Vec::new());
+static REGISTERED_VIEWS: OnceLock<Mutex<HashMap<String, Box<ViewFn>>>> = OnceLock::new();
 static VIEWS: Mutex<BTreeSet<NodeId>> = Mutex::new(BTreeSet::new());
 
 pub struct RegisteredViews;
 
 impl RegisteredViews {
-    pub fn add<T, F>(f: F)
+    pub fn add<T, F>(key: String, f: F)
     where
         F: Send + 'static + Fn() -> T,
-        T: 'static + View + std::fmt::Debug,
+        T: 'static + View,
     {
         REGISTERED_VIEWS
+            .get_or_init(Default::default)
             .lock()
-            .push(Box::new(move || Box::new(f())));
+            .insert(key, Box::new(move || Box::new(f())));
     }
 
-    pub fn get(id: usize) -> Result<Box<dyn AnyView>> {
-        let views = REGISTERED_VIEWS.lock();
+    pub fn get(id: &str) -> Result<Box<dyn AnyView>> {
+        let views = REGISTERED_VIEWS.get_or_init(Default::default).lock();
         let view = views.get(id);
 
         match view {
@@ -94,7 +96,7 @@ impl Views {
     }
 }
 
-pub trait View: Copy {
+pub trait View {
     type State: 'static;
 
     fn event(&self, event: (), state: &mut Self::State);
@@ -102,13 +104,13 @@ pub trait View: Copy {
     fn make() -> Self;
 }
 
-pub trait AnyView: std::fmt::Debug {
+pub trait AnyView {
     fn any_event(&mut self, ev: (), state: &mut dyn Any) -> ();
 }
 
 impl<T> AnyView for T
 where
-    T: View + std::fmt::Debug,
+    T: View,
 {
     fn any_event(&mut self, ev: (), state: &mut dyn Any) -> () {
         if let Some(state) = state.downcast_mut::<T::State>() {

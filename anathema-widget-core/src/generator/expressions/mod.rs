@@ -194,7 +194,7 @@ impl ControlFlow {
 
 #[derive(Debug)]
 pub struct ViewExpr {
-    pub id: usize,
+    pub id: String,
     pub state: Option<ValueExpr>,
     pub body: Vec<Expression>,
 }
@@ -209,7 +209,7 @@ impl ViewExpr {
         Views::insert(node_id.clone());
         let node = Node {
             kind: NodeKind::View(
-                RegisteredViews::get(self.id)?,
+                RegisteredViews::get(&self.id)?,
                 Nodes::new(&self.body, node_id.clone()),
             ),
             node_id,
