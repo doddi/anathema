@@ -106,7 +106,7 @@ impl<'e> IfElse<'e> {
         self.body().map(|nodes| nodes.count()).unwrap_or(0)
     }
 
-    pub(super) fn update(&mut self, node_id: &[usize], change: &Change, context: &Context<'_, '_>, tab_index: &mut TabIndex) {
+    pub(super) fn update(&mut self, node_id: &[usize], change: &Change, context: &Context<'_, '_>) {
         // If
         if self.if_node.node_id.contains(node_id) {
             if self.if_node.node_id.eq(node_id) {
@@ -114,14 +114,14 @@ impl<'e> IfElse<'e> {
                 let current = self.if_node.cond.value_or_default();
                 if self.if_node.previous != current && !current {
                     // remove from tab index
-                    tab_index.remove_all(self.if_node.body.node_ids());
+                    TabIndex::remove_all(self.if_node.body.node_ids());
                 } else {
                     // add to tab index
-                    tab_index.add_all(self.if_node.body.node_ids());
+                    TabIndex::add_all(self.if_node.body.node_ids());
                 }
                 self.if_node.previous = current;
             } else {
-                self.if_node.body.update(node_id, change, context, tab_index);
+                self.if_node.body.update(node_id, change, context);
             }
         }
 
@@ -133,14 +133,14 @@ impl<'e> IfElse<'e> {
                     let current = self.if_node.cond.value_or_default();
                     if e.previous != current && !current {
                         // remove from tab index
-                        tab_index.remove_all(e.body.node_ids());
+                        TabIndex::remove_all(e.body.node_ids());
                     } else {
                         // add to tab index
-                        tab_index.add_all(e.body.node_ids());
+                        TabIndex::add_all(e.body.node_ids());
                     }
                     e.previous = current;
                 } else {
-                    e.body.update(node_id, change, context, tab_index);
+                    e.body.update(node_id, change, context);
                 }
 
                 break;

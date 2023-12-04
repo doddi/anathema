@@ -1,91 +1,96 @@
 use std::any::Any;
 use std::collections::BTreeSet;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{Arc, OnceLock};
 
 use anathema_values::NodeId;
+use parking_lot::Mutex;
 
 use crate::error::{Error, Result};
 
-pub struct RegisteredViews {
-    inner: Vec<Box<dyn Fn() -> Box<dyn AnyView>>>,
-}
+type Lol = dyn Fn() -> Box<dyn AnyView> + Send;
+
+static TAB_INDEX: AtomicUsize = AtomicUsize::new(0);
+static TAB_VIEWS: OnceLock<Mutex<BTreeSet<NodeId>>> = OnceLock::new();
+static REGISTERED_VIEWS: Mutex<Vec<Box<Lol>>> = Mutex::new(Vec::new());
+static VIEWS: Mutex<BTreeSet<NodeId>> = Mutex::new(BTreeSet::new());
+
+pub struct RegisteredViews;
 
 impl RegisteredViews {
-    pub fn new() -> Self {
-        Self {
-            inner: Vec::new(),
-        }
-    }
-
-    pub fn add<T, F>(&mut self, f: F)
+    pub fn add<T, F>(f: F)
     where
-        F: 'static + Fn() -> T,
+        F: Send + 'static + Fn() -> T,
         T: 'static + View + std::fmt::Debug,
     {
-        self.inner.push(Box::new(move || Box::new(f())));
+        REGISTERED_VIEWS
+            .lock()
+            .push(Box::new(move || Box::new(f())));
     }
 
-    pub fn get(&self, id: usize) -> Result<Box<dyn AnyView>> {
-        match self.inner.get(id) {
+    pub fn get(id: usize) -> Result<Box<dyn AnyView>> {
+        let views = REGISTERED_VIEWS.lock();
+        let view = views.get(id);
+
+        match view {
             None => Err(Error::ViewNotFound),
             Some(f) => Ok(f()),
         }
     }
 }
 
-pub struct TabIndex {
-    inner: BTreeSet<NodeId>,
-    current: usize,
-}
+pub struct TabIndex;
 
 impl TabIndex {
-    pub fn new() -> Self {
-        Self {
-            inner: BTreeSet::new(),
-            current: 0,
-        }
-    }
-
     fn next(&mut self) {
-        self.current += 1;
-        if self.current == self.inner.len() {
-            self.current = 0;
+        TAB_INDEX.fetch_add(1, Ordering::Relaxed);
+
+        let len = TAB_VIEWS.get_or_init(Default::default).lock().len();
+
+        if TAB_INDEX.load(Ordering::Relaxed) == len {
+            TAB_INDEX.store(0, Ordering::Relaxed);
         }
     }
 
-    pub(crate) fn insert(&mut self, node_id: NodeId) {
-        self.inner.insert(node_id);
+    pub(crate) fn insert(node_id: NodeId) {
+        TAB_VIEWS
+            .get_or_init(Default::default)
+            .lock()
+            .insert(node_id);
     }
 
-    fn remove(&mut self, node_id: &NodeId) {
-        self.inner.remove(node_id);
+    fn remove(node_id: &NodeId) {
+        TAB_VIEWS
+            .get_or_init(Default::default)
+            .lock()
+            .remove(node_id);
     }
 
-    pub(crate) fn remove_all<'a>(&mut self, node_ids: impl Iterator<Item = &'a NodeId>) {
-        node_ids.for_each(|id| self.remove(id));
+    pub(crate) fn remove_all<'a>(node_ids: impl Iterator<Item = &'a NodeId>) {
+        let mut views = TAB_VIEWS.get_or_init(Default::default).lock();
+        node_ids.for_each(|id| {
+            views.remove(id);
+        });
     }
 
-    pub(crate) fn add_all<'a>(&mut self, node_ids: impl Iterator<Item = &'a NodeId>) {
-        node_ids.cloned().for_each(|id| self.insert(id));
+    pub(crate) fn add_all<'a>(node_ids: impl Iterator<Item = &'a NodeId>) {
+        let mut views = TAB_VIEWS.get_or_init(Default::default).lock();
+
+        node_ids.cloned().for_each(|id| {
+            views.insert(id);
+        });
     }
 }
 
-pub struct Views {
-    inner: BTreeSet<NodeId>,
-}
+pub struct Views;
 
 impl Views {
-    pub fn new() -> Self {
-        Self {
-            inner: BTreeSet::new(),
-        }
+    pub(crate) fn insert(node_id: NodeId) {
+        VIEWS.lock().insert(node_id);
     }
 
-    pub(crate) fn insert(&mut self, node_id: NodeId) {
-        self.inner.insert(node_id);
-    }
-
-    fn remove(&mut self, node_id: &NodeId) {
-        self.inner.remove(node_id);
+    fn remove(node_id: &NodeId) {
+        VIEWS.lock().remove(node_id);
     }
 }
 

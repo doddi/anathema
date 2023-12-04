@@ -204,15 +204,12 @@ impl ViewExpr {
         &'e self,
         context: &Context<'_, 'e>,
         node_id: NodeId,
-        tab_index: &mut TabIndex,
-        views: &mut Views,
-        registered_views: &RegisteredViews,
     ) -> Result<Node<'e>> {
-        tab_index.insert(node_id.clone());
-        views.insert(node_id.clone());
+        TabIndex::insert(node_id.clone());
+        Views::insert(node_id.clone());
         let node = Node {
             kind: NodeKind::View(
-                registered_views.get(self.id)?,
+                RegisteredViews::get(self.id)?,
                 Nodes::new(&self.body, node_id.clone()),
             ),
             node_id,
@@ -238,15 +235,12 @@ impl Expression {
         &'expr self,
         context: &Context<'a, 'expr>,
         node_id: NodeId,
-        tab_index: &mut TabIndex,
-        views: &mut Views,
-        registered_views: &RegisteredViews,
     ) -> Result<Node<'expr>> {
         match self {
             Self::Node(node) => node.eval(context, node_id),
             Self::Loop(loop_expr) => loop_expr.eval(context, node_id),
             Self::ControlFlow(controlflow) => controlflow.eval(context, node_id),
-            Self::View(view_expr) => view_expr.eval(context, node_id, tab_index, views, registered_views),
+            Self::View(view_expr) => view_expr.eval(context, node_id),
         }
     }
 }

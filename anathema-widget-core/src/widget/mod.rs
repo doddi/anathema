@@ -9,6 +9,7 @@ use super::contexts::{PaintCtx, PositionCtx, WithSize};
 use crate::contexts::LayoutCtx;
 use crate::error::Result;
 use crate::generator::Nodes;
+use crate::LayoutNodes;
 
 mod container;
 
@@ -30,12 +31,7 @@ pub trait Widget {
     // -----------------------------------------------------------------------------
     //     - Layout -
     // -----------------------------------------------------------------------------
-    fn layout<'e>(
-        &mut self,
-        children: &mut Nodes<'e>,
-        layout: &LayoutCtx,
-        data: &Context<'_, 'e>,
-    ) -> Result<Size>;
+    fn layout<'e>(&mut self, nodes: &mut LayoutNodes<'_, '_, 'e>) -> Result<Size>;
 
     /// By the time this function is called the widget container
     /// has already set the position. This is useful to correctly set the position
@@ -53,17 +49,34 @@ pub trait Widget {
     fn update(&mut self, _context: &Context<'_, '_>, _node_id: &NodeId) {}
 }
 
+impl Widget for Box<dyn Widget> {
+    fn kind(&self) -> &'static str {
+        self.as_ref().kind()
+    }
+
+    fn layout<'e>(&mut self, nodes: &mut LayoutNodes<'_, '_, 'e>) -> Result<Size> {
+        self.as_mut().layout(nodes)
+    }
+
+    fn position(&mut self, children: &mut Nodes, ctx: PositionCtx) {
+        self.as_mut().position(children, ctx)
+    }
+
+    fn paint(&mut self, children: &mut Nodes, ctx: PaintCtx<'_, WithSize>) {
+        self.as_mut().paint(children, ctx)
+    }
+
+    fn update(&mut self, context: &Context<'_, '_>, node_id: &NodeId) {
+        self.as_mut().update(context, node_id)
+    }
+}
+
 pub trait AnyWidget {
     fn as_any_ref(&self) -> &dyn Any;
 
     fn as_any_mut(&mut self) -> &mut dyn Any;
 
-    fn layout_any<'e>(
-        &mut self,
-        children: &mut Nodes<'e>,
-        layout: &LayoutCtx,
-        data: &Context<'_, 'e>,
-    ) -> Result<Size>;
+    fn layout_any<'e>(&mut self, nodes: &mut LayoutNodes<'_, '_, 'e>) -> Result<Size>;
 
     fn kind_any(&self) -> &'static str;
 
@@ -79,13 +92,8 @@ impl Widget for Box<dyn AnyWidget> {
         self.deref().kind_any()
     }
 
-    fn layout<'e>(
-        &mut self,
-        children: &mut Nodes<'e>,
-        layout: &LayoutCtx,
-        data: &Context<'_, 'e>,
-    ) -> Result<Size> {
-        self.deref_mut().layout_any(children, layout, data)
+    fn layout<'e>(&mut self, nodes: &mut LayoutNodes<'_, '_, 'e>) -> Result<Size> {
+        self.deref_mut().layout_any(nodes)
     }
 
     fn position(&mut self, children: &mut Nodes, ctx: PositionCtx) {
@@ -110,13 +118,8 @@ impl<T: Widget + 'static> AnyWidget for T {
         self
     }
 
-    fn layout_any<'e>(
-        &mut self,
-        children: &mut Nodes<'e>,
-        layout: &LayoutCtx,
-        data: &Context<'_, 'e>,
-    ) -> Result<Size> {
-        self.layout(children, layout, data)
+    fn layout_any<'e>(&mut self, nodes: &mut LayoutNodes<'_, '_, 'e>) -> Result<Size> {
+        self.layout(nodes)
     }
 
     fn kind_any(&self) -> &'static str {
@@ -133,32 +136,5 @@ impl<T: Widget + 'static> AnyWidget for T {
 
     fn update_any(&mut self, context: &Context<'_, '_>, node_id: &NodeId) {
         self.update(context, node_id)
-    }
-}
-
-impl Widget for Box<dyn Widget> {
-    fn kind(&self) -> &'static str {
-        self.as_ref().kind()
-    }
-
-    fn layout<'e>(
-        &mut self,
-        children: &mut Nodes<'e>,
-        layout: &LayoutCtx,
-        data: &Context<'_, 'e>,
-    ) -> Result<Size> {
-        self.as_mut().layout(children, layout, data)
-    }
-
-    fn position(&mut self, children: &mut Nodes, ctx: PositionCtx) {
-        self.as_mut().position(children, ctx)
-    }
-
-    fn paint(&mut self, children: &mut Nodes, ctx: PaintCtx<'_, WithSize>) {
-        self.as_mut().paint(children, ctx)
-    }
-
-    fn update(&mut self, context: &Context<'_, '_>, node_id: &NodeId) {
-        self.as_mut().update(context, node_id)
     }
 }

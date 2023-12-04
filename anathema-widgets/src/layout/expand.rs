@@ -46,12 +46,14 @@ fn distribute_size(weights: &[usize], mut total: usize) -> Vec<usize> {
 }
 
 pub fn layout<'nodes, 'state, 'expr>(
-    nodes: LayoutNodes<'nodes, 'state, 'expr>,
+    nodes: &mut LayoutNodes<'nodes, 'state, 'expr>,
     // ctx: &LayoutCtx,
     // children: &mut Nodes<'e>,
     axis: Axis,
     // data: &Context<'_, 'e>,
 ) -> Result<Size> {
+    let constraints = nodes.constraints;
+
     let expansions = nodes
         .filter(|node| node.kind() == Expand::KIND)
         .collect::<Vec<_>>();
@@ -68,23 +70,23 @@ pub fn layout<'nodes, 'state, 'expr>(
     }
 
     // Distribute the available space
-    
+
     let sizes = match axis {
-        Axis::Horizontal => distribute_size(&factors, nodes.constraints.max_width),
-        Axis::Vertical => distribute_size(&factors, nodes.constraints.max_height),
+        Axis::Horizontal => distribute_size(&factors, constraints.max_width),
+        Axis::Vertical => distribute_size(&factors, constraints.max_height),
     };
 
-    for (sub_size, widget) in std::iter::zip(sizes, expansions) {
+    for (sub_size, mut widget) in std::iter::zip(sizes, expansions) {
         let constraints = match axis {
             Axis::Horizontal => {
-                let mut constraints = Constraints::new(sub_size, ctx.constraints.max_height);
+                let mut constraints = Constraints::new(sub_size, constraints.max_height);
 
                 // Ensure that the rounding doesn't push the constraint outside of the max width
                 constraints.min_width = constraints.max_width;
                 constraints
             }
             Axis::Vertical => {
-                let mut constraints = Constraints::new(ctx.constraints.max_width, sub_size);
+                let mut constraints = Constraints::new(constraints.max_width, sub_size);
 
                 // Ensure that the rounding doesn't push the constraint outside of the max height
                 constraints.min_height = constraints.max_height;

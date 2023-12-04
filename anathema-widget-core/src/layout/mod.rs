@@ -3,28 +3,25 @@ use std::ops::{Add, AddAssign, Mul, Sub, SubAssign};
 
 use anathema_render::{ScreenPos, Size};
 use anathema_values::{
-    impl_dyn_value, Context, DynValue, NodeId, Resolver, ValueResolver, Value, ValueExpr, ValueRef,
+    impl_dyn_value, Context, DynValue, NodeId, Resolver, Value, ValueExpr, ValueRef, ValueResolver,
 };
+pub use layoutnodes::{LayoutNode, LayoutNodes};
 
 pub use self::constraints::Constraints;
 pub use self::padding::Padding;
 use crate::contexts::LayoutCtx;
 use crate::error::Result;
 use crate::generator::Nodes;
-pub use layoutnodes::{LayoutNodes, LayoutNode};
 
 mod constraints;
-mod padding;
 mod layoutnodes;
+mod padding;
 
 pub trait Layout {
     fn layout<'nodes, 'expr, 'state>(
         &mut self,
-        nodes: LayoutNodes<'nodes, 'expr, 'state>,
-        // children: &mut Nodes<'e>,
-        // layout: &LayoutCtx,
-        // data: &Context<'_, 'e>,
-    ) -> crate::error::Result<Size>;
+        nodes: &mut LayoutNodes<'nodes, 'expr, 'state>,
+    ) -> Result<Size>;
 }
 
 // -----------------------------------------------------------------------------

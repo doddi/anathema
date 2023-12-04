@@ -23,27 +23,24 @@ pub struct Node<'e> {
 }
 
 impl<'e> Node<'e> {
-    pub fn next<F>(
-        &mut self,
-        context: &Context<'_, 'e>,
-        layout: &LayoutCtx,
-        f: &mut F,
-    ) -> Result<ControlFlow<(), ()>>
+    pub fn next<F>(&mut self, context: &Context<'_, 'e>, f: &mut F) -> Result<ControlFlow<(), ()>>
     where
         F: FnMut(&mut WidgetContainer<'e>, &mut Nodes<'e>, &Context<'_, 'e>) -> Result<()>,
     {
         match &mut self.kind {
-            NodeKind::Single(Single { widget, children, .. }) => {
+            NodeKind::Single(Single {
+                widget, children, ..
+            }) => {
                 f(widget, children, context)?;
                 Ok(ControlFlow::Continue(()))
             }
-            NodeKind::Loop(loop_state) => loop_state.next(context, layout, f),
+            NodeKind::Loop(loop_state) => loop_state.next(context, f),
             NodeKind::ControlFlow(if_else) => {
                 let Some(body) = if_else.body_mut() else {
                     return Ok(ControlFlow::Break(()));
                 };
 
-                while let Ok(res) = body.next(context, layout, f) {
+                while let Ok(res) = body.next(context, f) {
                     match res {
                         ControlFlow::Continue(()) => continue,
                         ControlFlow::Break(()) => break,
@@ -53,7 +50,7 @@ impl<'e> Node<'e> {
                 Ok(ControlFlow::Continue(()))
             }
             NodeKind::View(_, nodes) => {
-                while let Ok(res) = nodes.next(context, layout, f) {
+                while let Ok(res) = nodes.next(context, f) {
                     match res {
                         ControlFlow::Continue(()) => continue,
                         ControlFlow::Break(()) => break,
@@ -132,32 +129,19 @@ pub struct Nodes<'expr> {
 }
 
 impl<'expr> Nodes<'expr> {
-    fn new_node(
-        &mut self,
-        context: &Context<'_, 'expr>,
-        tab_index: &mut TabIndex,
-        views: &mut Views,
-        registered_views: &RegisteredViews,
-    ) -> Option<Result<()>> {
+    fn new_node(&mut self, context: &Context<'_, 'expr>) -> Option<Result<()>> {
         let expr = self.expressions.get(self.expr_index)?;
         self.expr_index += 1;
-        match expr.eval(
-            &context,
-            self.next_id.next(),
-            tab_index,
-            views,
-            registered_views,
-        ) {
+        match expr.eval(&context, self.next_id.next()) {
             Ok(node) => self.inner.push(node),
             Err(e) => return Some(Err(e)),
         };
         Some(Ok(()))
     }
 
-    pub fn next<F>(
+    pub(crate) fn next<F>(
         &mut self,
         context: &Context<'_, 'expr>,
-        layout: &LayoutCtx,
         f: &mut F,
     ) -> Result<ControlFlow<(), ()>>
     where
@@ -166,29 +150,25 @@ impl<'expr> Nodes<'expr> {
         match self.inner.get_mut(self.cache_index) {
             Some(n) => {
                 self.cache_index += 1;
-                n.next(context, layout, f)
+                n.next(context, f)
             }
             None => {
-                panic!("this can be implemented once the layout node thing is done");
-                // if let Err(e) = self.new_node(context)? {
-                //     return Some(Err(e));
-                // }
-                self.next(context, layout, f)
+                let res = self.new_node(context);
+                match res {
+                    None => Ok(ControlFlow::Break(())),
+                    Some(Err(e)) => Err(e),
+                    Some(Ok(())) => self.next(context, f),
+                }
             }
         }
     }
 
-    pub fn for_each<F>(
-        &mut self,
-        context: &Context<'_, 'expr>,
-        layout: &LayoutCtx,
-        mut f: F,
-    ) -> Result<()>
+    pub fn for_each<F>(&mut self, context: &Context<'_, 'expr>, mut f: F) -> Result<()>
     where
         F: FnMut(&mut WidgetContainer<'expr>, &mut Nodes<'expr>, &Context<'_, 'expr>) -> Result<()>,
     {
         loop {
-            if let Ok(res) = self.next(context, layout, &mut f) {
+            if let Ok(res) = self.next(context, &mut f) {
                 match res {
                     ControlFlow::Continue(()) => continue,
                     ControlFlow::Break(()) => break,
@@ -200,14 +180,8 @@ impl<'expr> Nodes<'expr> {
     }
 
     // TODO: move this into a visitor?
-    pub fn update(
-        &mut self,
-        node_id: &[usize],
-        change: &Change,
-        context: &Context<'_, '_>,
-        tab_index: &mut TabIndex,
-    ) {
-        update(&mut self.inner, node_id, change, context, tab_index);
+    pub fn update(&mut self, node_id: &[usize], change: &Change, context: &Context<'_, '_>) {
+        update(&mut self.inner, node_id, change, context);
     }
 
     pub(crate) fn new(expressions: &'expr [Expression], next_id: NodeId) -> Self {
@@ -278,13 +252,7 @@ fn count<'a>(nodes: impl Iterator<Item = &'a Node<'a>>) -> usize {
 }
 
 // Apply change / update to relevant nodes
-fn update(
-    nodes: &mut [Node<'_>],
-    node_id: &[usize],
-    change: &Change,
-    context: &Context<'_, '_>,
-    tab_index: &mut TabIndex,
-) {
+fn update(nodes: &mut [Node<'_>], node_id: &[usize], change: &Change, context: &Context<'_, '_>) {
     for node in nodes {
         if node.node_id.contains(node_id) {
             // Found the node to update
@@ -298,17 +266,11 @@ fn update(
 
             match &mut node.kind {
                 NodeKind::Single(Single { children, .. }) => {
-                    return children.update(&node_id, change, &context, tab_index)
+                    return children.update(&node_id, change, &context)
                 }
-                NodeKind::Loop(loop_node) => {
-                    return loop_node.update(node_id, change, &context, tab_index)
-                }
-                NodeKind::ControlFlow(if_else) => {
-                    return if_else.update(node_id, change, &context, tab_index)
-                }
-                NodeKind::View(_, nodes) => {
-                    return nodes.update(node_id, change, &context, tab_index)
-                }
+                NodeKind::Loop(loop_node) => return loop_node.update(node_id, change, &context),
+                NodeKind::ControlFlow(if_else) => return if_else.update(node_id, change, &context),
+                NodeKind::View(_, nodes) => return nodes.update(node_id, change, &context),
             }
         }
     }

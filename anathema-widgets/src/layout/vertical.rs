@@ -3,7 +3,7 @@ use anathema_values::Context;
 use anathema_widget_core::contexts::LayoutCtx;
 use anathema_widget_core::error::Result;
 use anathema_widget_core::layout::{Axis, Direction, Layout};
-use anathema_widget_core::{Nodes, WidgetContainer};
+use anathema_widget_core::{LayoutNodes, Nodes, WidgetContainer};
 
 use super::many::Many;
 
@@ -18,12 +18,10 @@ impl Vertical {
 }
 
 impl Layout for Vertical {
-    fn layout<'e>(
+    fn layout<'nodes, 'expr, 'state>(
         &mut self,
-        children: &mut Nodes<'e>,
-        layout: &LayoutCtx,
-        data: &Context<'_, 'e>,
+        nodes: &mut LayoutNodes<'nodes, 'expr, 'state>,
     ) -> Result<Size> {
-        self.0.layout(children, layout, data)
+        self.0.layout(nodes)
     }
 }

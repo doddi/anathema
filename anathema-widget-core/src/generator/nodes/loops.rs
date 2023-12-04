@@ -9,8 +9,8 @@ use crate::contexts::LayoutCtx;
 use crate::error::Result;
 use crate::generator::expressions::Collection;
 use crate::generator::Expression;
-use crate::WidgetContainer;
 use crate::views::TabIndex;
+use crate::WidgetContainer;
 
 #[derive(Debug)]
 pub(in crate::generator) struct Iteration<'e> {
@@ -62,7 +62,6 @@ impl<'e> LoopNode<'e> {
     pub(super) fn next<F>(
         &mut self,
         context: &Context<'_, 'e>,
-        layout: &LayoutCtx,
         f: &mut F,
     ) -> Result<ControlFlow<(), ()>>
     where
@@ -86,7 +85,7 @@ impl<'e> LoopNode<'e> {
                 }
             };
 
-            while let Ok(res) = iter.body.next(&context, layout, f) {
+            while let Ok(res) = iter.body.next(&context, f) {
                 match res {
                     ControlFlow::Continue(()) => continue,
                     ControlFlow::Break(()) => break,
@@ -123,7 +122,7 @@ impl<'e> LoopNode<'e> {
                 ValueRef::Deferred(path)
             }
             Collection::Empty => return None,
-            _ => panic!()
+            _ => panic!(),
         };
 
         Some(val)
@@ -166,11 +165,15 @@ impl<'e> LoopNode<'e> {
         Box::new(self.iterations.iter().flat_map(|i| i.body.node_ids()))
     }
 
-
-    pub(super) fn update(&mut self, node_id: &[usize], change: &Change, context: &Context<'_, '_>, tab_index: &mut TabIndex) {
+    pub(super) fn update(
+        &mut self,
+        node_id: &[usize],
+        change: &Change,
+        context: &Context<'_, '_>,
+    ) {
         for iter in &mut self.iterations {
             if iter.node_id.contains(node_id) {
-                iter.body.update(node_id, change, context, tab_index);
+                iter.body.update(node_id, change, context);
                 break;
             }
         }

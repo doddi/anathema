@@ -3,7 +3,7 @@ use anathema_values::Context;
 use anathema_widget_core::contexts::LayoutCtx;
 use anathema_widget_core::error::{Error, Result};
 use anathema_widget_core::layout::{Constraints, Layout};
-use anathema_widget_core::{Nodes, WidgetContainer};
+use anathema_widget_core::{Nodes, WidgetContainer, LayoutNodes};
 
 pub struct BorderLayout {
     pub min_width: Option<usize>,
@@ -14,51 +14,47 @@ pub struct BorderLayout {
 }
 
 impl Layout for BorderLayout {
-    fn layout<'e>(
+    fn layout<'nodes, 'expr, 'state>(
         &mut self,
-        children: &mut Nodes<'e>,
-        layout: &LayoutCtx,
-        data: &Context<'_, 'e>,
+        nodes: &mut LayoutNodes<'nodes, 'expr, 'state>,
     ) -> Result<Size> {
         // If there is a min width / height, make sure the minimum constraints
         // are matching these
-        let mut layout = *layout;
+        let mut constraints = nodes.constraints;
+
         if let Some(min_width) = self.min_width {
-            layout.constraints.min_width = layout.constraints.min_width.max(min_width);
+            constraints.min_width = constraints.min_width.max(min_width);
         }
 
         if let Some(min_height) = self.min_height {
-            layout.constraints.min_height = layout.constraints.min_height.max(min_height);
+            constraints.min_height = constraints.min_height.max(min_height);
         }
 
         // If there is a width / height then make the constraints tight
         // around the size. This will modify the size to fit within the
         // constraints first.
         if let Some(width) = self.width {
-            layout.constraints.make_width_tight(width);
+            constraints.make_width_tight(width);
         }
 
         if let Some(height) = self.height {
-            layout.constraints.make_height_tight(height);
+            constraints.make_height_tight(height);
         }
 
-        if layout.constraints == Constraints::ZERO {
+        if constraints == Constraints::ZERO {
             return Ok(Size::ZERO);
         }
 
         let border_size = self.border_size;
 
-        let mut constraints = layout.padded_constraints();
-        let padding_size = layout.padding_size();
+        constraints.apply_padding(nodes.padding);
+        let padding_size = nodes.padding_size();
 
-        let is_height_tight = layout.constraints.is_height_tight();
-        let is_width_tight = layout.constraints.is_width_tight();
+        let is_height_tight = constraints.is_height_tight();
+        let is_width_tight = constraints.is_width_tight();
 
         let mut size = Size::ZERO;
-        children.for_each(
-            data,
-            &layout,
-            |widget: &mut WidgetContainer<'e>, children: &mut Nodes<'e>, data: &Context<'_, 'e>| {
+        nodes.next(|mut node| {
                 // Shrink the constraint for the child to fit inside the border
                 constraints.max_width = match constraints.max_width.checked_sub(border_size.width) {
                     Some(w) => w,
@@ -83,7 +79,7 @@ impl Layout for BorderLayout {
                     return Err(Error::InsufficientSpaceAvailble);
                 }
 
-                let inner_size = widget.layout(children, constraints, data)?;
+                let inner_size = node.layout(constraints)?;
 
                 size = inner_size + border_size + padding_size;
 
@@ -102,12 +98,12 @@ impl Layout for BorderLayout {
         match size {
             Size::ZERO => {
                 let mut size =
-                    Size::new(layout.constraints.min_width, layout.constraints.min_height);
+                    Size::new(constraints.min_width, constraints.min_height);
                 if is_width_tight {
-                    size.width = layout.constraints.max_width;
+                    size.width = constraints.max_width;
                 }
                 if is_height_tight {
-                    size.height = layout.constraints.max_height;
+                    size.height = constraints.max_height;
                 }
                 Ok(size)
             }

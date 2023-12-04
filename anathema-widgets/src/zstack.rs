@@ -2,9 +2,9 @@ use anathema_render::Size;
 use anathema_values::{Attributes, Context, NodeId, Value};
 use anathema_widget_core::contexts::{LayoutCtx, PaintCtx, PositionCtx, WithSize};
 use anathema_widget_core::error::Result;
-use anathema_widget_core::layout::Layouts;
+use anathema_widget_core::layout::{Layouts, Layout};
 use anathema_widget_core::{
-    AnyWidget, FactoryContext, Nodes, Widget, WidgetContainer, WidgetFactory,
+    AnyWidget, FactoryContext, Nodes, Widget, WidgetContainer, WidgetFactory, LayoutNodes,
 };
 
 use crate::layout::stacked::Stacked;
@@ -73,27 +73,21 @@ impl Widget for ZStack {
         "ZStack"
     }
 
-    fn layout<'e>(
-        &mut self,
-        children: &mut Nodes<'e>,
-        ctx: &LayoutCtx,
-        data: &Context<'_, 'e>,
-    ) -> Result<Size> {
-        let mut constraints = ctx.constraints;
+    fn layout<'e>(&mut self, nodes: &mut LayoutNodes<'_, '_, 'e>) -> Result<Size> {
         if let Some(min_width) = self.min_width.value() {
-            constraints.min_width = constraints.min_width.max(min_width);
+            nodes.constraints.min_width = nodes.constraints.min_width.max(min_width);
         }
         if let Some(min_height) = self.min_height.value() {
-            constraints.min_height = constraints.min_height.max(min_height);
+            nodes.constraints.min_height = nodes.constraints.min_height.max(min_height);
         }
         if let Some(width) = self.width.value() {
-            constraints.make_width_tight(width);
+            nodes.constraints.make_width_tight(width);
         }
         if let Some(height) = self.height.value() {
-            constraints.make_height_tight(height);
+            nodes.constraints.make_height_tight(height);
         }
 
-        Layouts::new(Stacked, ctx).layout(children, data)
+        Stacked.layout(nodes)
     }
 
     fn position<'tpl>(&mut self, children: &mut Nodes, ctx: PositionCtx) {

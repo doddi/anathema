@@ -27,9 +27,6 @@ pub mod events;
 pub struct Runtime<'e, E, ER, S> {
     pub enable_meta: bool,
     pub enable_mouse: bool,
-    tab_index: TabIndex,
-    views: Views,
-    registered_views: RegisteredViews,
     // views: V,
     state: S,
     screen: Screen,
@@ -72,9 +69,6 @@ where
 
         let inst = Self {
             output: stdout,
-            tab_index: TabIndex::new(),
-            views: Views::new(),
-            registered_views: RegisteredViews::new(),
             state,
             screen,
             constraints,
@@ -93,12 +87,13 @@ where
     fn layout(&mut self) -> Result<()> {
         self.nodes.reset_cache();
         let context = Context::root(&self.state);
-        let nodes = LayoutNodes::new(&mut self.nodes, self.constraints, Padding::ZERO, &context);
+        let mut nodes = LayoutNodes::new(&mut self.nodes, self.constraints, Padding::ZERO, &context);
 
-        nodes.for_each(|node| {
-            node.layout(children, constraints, context)?;
+        nodes.for_each(|mut node| {
+            node.layout(self.constraints)?;
             Ok(())
-        });
+        })?;
+
         Ok(())
     }
 
@@ -124,7 +119,7 @@ where
 
         for (node_id, change) in dirty_nodes {
             self.nodes
-                .update(node_id.as_slice(), &change, &context, &mut self.tab_index);
+                .update(node_id.as_slice(), &change, &context);
         }
 
         // TODO: finish this. Need to figure out a good way to notify that

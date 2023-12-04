@@ -5,7 +5,7 @@ use anathema_values::{Attributes, Context, DynValue, NodeId, Path, State, Value,
 use anathema_widget_core::contexts::{LayoutCtx, PaintCtx, PositionCtx, WithSize};
 use anathema_widget_core::error::Result;
 use anathema_widget_core::{
-    AnyWidget, FactoryContext, LocalPos, Nodes, Widget, WidgetContainer, WidgetFactory, WidgetStyle,
+    AnyWidget, FactoryContext, LocalPos, Nodes, Widget, WidgetContainer, WidgetFactory, WidgetStyle, LayoutNodes,
 };
 use unicode_width::UnicodeWidthStr;
 
@@ -122,21 +122,16 @@ impl Widget for Text {
         self.style.resolve(context, None);
     }
 
-    fn layout<'e>(
-        &mut self,
-        children: &mut Nodes<'e>,
-        layout: &LayoutCtx,
-        data: &Context<'_, 'e>,
-    ) -> Result<Size> {
+    fn layout<'e>(&mut self, nodes: &mut LayoutNodes<'_, '_, 'e>) -> Result<Size> {
         self.layout = TextLayout::ZERO;
-        let max_size = Size::new(layout.constraints.max_width, layout.constraints.max_height);
+        let max_size = Size::new(nodes.constraints.max_width, nodes.constraints.max_height);
         self.layout.set_max_size(max_size);
         self.word_wrap
             .value_ref()
             .map(|wrap| self.layout.set_wrap(*wrap));
         self.layout.process(self.text.str());
 
-        children.for_each(data, layout, |span, inner_children, data| {
+        nodes.for_each(|mut span| {
             // Ignore any widget that isn't a span
             if span.kind() != TextSpan::KIND {
                 return Ok(());
@@ -199,7 +194,7 @@ impl Widget for TextSpan {
         self.style.resolve(context, None);
     }
 
-    fn layout(&mut self, _: &mut Nodes, _: &LayoutCtx, _: &Context<'_, '_>) -> Result<Size> {
+    fn layout<'e>(&mut self, nodes: &mut LayoutNodes<'_, '_, 'e>) -> Result<Size> {
         panic!("layout should never be called directly on a span");
     }
 

@@ -122,8 +122,8 @@ impl WidgetContainer<'_> {
             Display::Exclude => self.size = Size::ZERO,
             _ => {
                 let layout = LayoutCtx::new(constraints, self.padding);
-                let nodes = LayoutNodes::new(children, constraints, self.padding, data);
-                let size = self.inner.layout(nodes)?;
+                let mut nodes = LayoutNodes::new(children, constraints, self.padding, data);
+                let size = self.inner.layout(&mut nodes)?;
 
                 // TODO: we should compare the new size with the old size
                 //       to determine if the layout needs to propagate outwards

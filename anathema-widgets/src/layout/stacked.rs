@@ -3,24 +3,23 @@ use anathema_values::Context;
 use anathema_widget_core::contexts::LayoutCtx;
 use anathema_widget_core::error::{Error, Result};
 use anathema_widget_core::layout::Layout;
-use anathema_widget_core::{Nodes, WidgetContainer};
+use anathema_widget_core::{LayoutNodes, Nodes, WidgetContainer};
 
 pub struct Stacked;
 
 impl Layout for Stacked {
-    fn layout<'e>(
+    fn layout<'nodes, 'expr, 'state>(
         &mut self,
-        children: &mut Nodes<'e>,
-        layout: &LayoutCtx,
-        data: &Context<'_, 'e>,
+        nodes: &mut LayoutNodes<'nodes, 'expr, 'state>,
     ) -> Result<Size> {
         let mut width = 0;
         let mut height = 0;
 
-        let constraints = layout.padded_constraints();
+        let mut constraints = nodes.constraints;
+        constraints.apply_padding(nodes.padding);
 
-        children.for_each(data, layout, |widget, children, data| {
-            let widget_size = match widget.layout(children, constraints, data) {
+        nodes.for_each(|mut node| {
+            let widget_size = match node.layout(constraints) {
                 Ok(s) => s,
                 err @ Err(_) => err?,
             };

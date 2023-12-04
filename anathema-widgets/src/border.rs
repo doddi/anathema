@@ -2,13 +2,15 @@ use std::fmt::Display;
 
 use anathema_render::{Size, Style};
 use anathema_values::{
-    impl_dyn_value, Attributes, Context, DynValue, NodeId, Resolver, ValueResolver, Value, ValueExpr, ValueRef,
+    impl_dyn_value, Attributes, Context, DynValue, NodeId, Resolver, Value, ValueExpr, ValueRef,
+    ValueResolver,
 };
 use anathema_widget_core::contexts::{LayoutCtx, PaintCtx, PositionCtx, WithSize};
 use anathema_widget_core::error::Result;
-use anathema_widget_core::layout::Layouts;
+use anathema_widget_core::layout::{Layout, Layouts};
 use anathema_widget_core::{
-    AnyWidget, FactoryContext, LocalPos, Nodes, Widget, WidgetContainer, WidgetFactory, WidgetStyle,
+    AnyWidget, FactoryContext, LayoutNodes, LocalPos, Nodes, Widget, WidgetContainer,
+    WidgetFactory, WidgetStyle,
 };
 use smallvec::SmallVec;
 use unicode_width::UnicodeWidthChar;
@@ -315,21 +317,15 @@ impl Widget for Border {
         Self::KIND
     }
 
-    fn layout<'e>(
-        &mut self,
-        children: &mut Nodes<'e>,
-        layout: &LayoutCtx,
-        data: &Context<'_, 'e>,
-    ) -> Result<Size> {
-        let border_layout = BorderLayout {
+    fn layout<'e>(&mut self, nodes: &mut LayoutNodes<'_, '_, 'e>) -> Result<Size> {
+        let mut layout = BorderLayout {
             min_height: self.min_height.value(),
             min_width: self.min_width.value(),
             height: self.height.value(),
             width: self.width.value(),
             border_size: self.border_size(),
         };
-        let mut layout = Layouts::new(border_layout, layout);
-        layout.layout(children, data)
+        layout.layout(nodes)
     }
 
     fn position(&mut self, children: &mut Nodes, mut ctx: PositionCtx) {

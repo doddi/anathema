@@ -2,9 +2,9 @@ use anathema_render::Size;
 use anathema_values::{Attributes, Context, NodeId, ValueExpr};
 use anathema_widget_core::contexts::{LayoutCtx, PaintCtx, PositionCtx, WithSize};
 use anathema_widget_core::error::Result;
-use anathema_widget_core::layout::Layouts;
+use anathema_widget_core::layout::{Layouts, Layout};
 use anathema_widget_core::{
-    AnyWidget, FactoryContext, Nodes, Widget, WidgetContainer, WidgetFactory,
+    AnyWidget, FactoryContext, Nodes, Widget, WidgetContainer, WidgetFactory, LayoutNodes,
 };
 
 use crate::layout::spacers::SpacerLayout;
@@ -33,18 +33,13 @@ impl Widget for Spacer {
         Self::KIND
     }
 
-    fn layout<'e>(
-        &mut self,
-        children: &mut Nodes<'e>,
-        layout: &LayoutCtx,
-        data: &Context<'_, 'e>,
-    ) -> Result<Size> {
+    fn layout<'e>(&mut self, nodes: &mut LayoutNodes<'_, '_, 'e>) -> Result<Size> {
         // debug_assert!(
         //     layout.constraints.is_width_tight() && layout.constraints.is_height_tight(),
         //     "the layout context needs to be tight for a spacer"
         // );
 
-        Layouts::new(SpacerLayout, layout).layout(children, data)
+        SpacerLayout.layout(nodes)
     }
 
     fn position<'tpl>(&mut self, children: &mut Nodes, ctx: PositionCtx) {}

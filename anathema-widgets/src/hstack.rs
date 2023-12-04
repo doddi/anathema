@@ -1,9 +1,11 @@
 use anathema_render::Size;
-use anathema_values::{Context, NodeId, Attributes, Value};
+use anathema_values::{Attributes, Context, NodeId, Value};
 use anathema_widget_core::contexts::{LayoutCtx, PositionCtx};
 use anathema_widget_core::error::Result;
-use anathema_widget_core::layout::{Direction, Layouts};
-use anathema_widget_core::{AnyWidget, Nodes, Widget, WidgetContainer, WidgetFactory, FactoryContext};
+use anathema_widget_core::layout::{Direction, Layout, Layouts};
+use anathema_widget_core::{
+    AnyWidget, FactoryContext, LayoutNodes, Nodes, Widget, WidgetContainer, WidgetFactory,
+};
 
 use crate::layout::horizontal::Horizontal;
 
@@ -57,27 +59,21 @@ impl Widget for HStack {
         "HStack"
     }
 
-    fn layout<'e>(
-        &mut self,
-        children: &mut Nodes<'e>,
-        layout: &LayoutCtx,
-        data: &Context<'_, 'e>,
-    ) -> Result<Size> {
-        let mut layout = *layout;
+    fn layout<'e>(&mut self, nodes: &mut LayoutNodes<'_, '_, 'e>) -> Result<Size> {
         if let Some(width) = self.width.value() {
-            layout.constraints.max_width = layout.constraints.max_width.min(width);
+            nodes.constraints.max_width = nodes.constraints.max_width.min(width);
         }
         if let Some(height) = self.height.value() {
-            layout.constraints.max_height = layout.constraints.max_height.min(height);
+            nodes.constraints.max_height = nodes.constraints.max_height.min(height);
         }
         if let Some(min_width) = self.min_width.value() {
-            layout.constraints.min_width = layout.constraints.min_width.max(min_width);
+            nodes.constraints.min_width = nodes.constraints.min_width.max(min_width);
         }
         if let Some(min_height) = self.min_height.value() {
-            layout.constraints.min_height = layout.constraints.min_height.max(min_height);
+            nodes.constraints.min_height = nodes.constraints.min_height.max(min_height);
         }
 
-        Layouts::new(Horizontal::new(Direction::Forward), &layout).layout(children, data)
+        Horizontal::new(Direction::Forward).layout(nodes)
     }
 
     fn position<'tpl>(&mut self, children: &mut Nodes, ctx: PositionCtx) {

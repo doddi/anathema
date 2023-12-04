@@ -3,9 +3,9 @@ use anathema_values::{Attributes, Context, NodeId, Value, ValueExpr};
 use anathema_widget_core::contexts::{LayoutCtx, PositionCtx};
 use anathema_widget_core::error::Result;
 use anathema_widget_core::generator::Nodes;
-use anathema_widget_core::layout::{Align, Layouts};
+use anathema_widget_core::layout::{Align, Layouts, Layout};
 use anathema_widget_core::{
-    AnyWidget, FactoryContext, Pos, Widget, WidgetContainer, WidgetFactory,
+    AnyWidget, FactoryContext, LayoutNodes, Pos, Widget, WidgetContainer, WidgetFactory,
 };
 
 use crate::layout::single::Single;
@@ -29,21 +29,15 @@ impl Widget for Alignment {
         Self::KIND
     }
 
-    fn layout<'e>(
-        &mut self,
-        children: &mut Nodes<'e>,
-        layout: &LayoutCtx,
-        data: &Context<'_, 'e>,
-    ) -> Result<Size> {
-        let mut layout = Layouts::new(Single, layout);
-        let size = layout.layout(children, data)?;
+    fn layout<'e>(&mut self, nodes: &mut LayoutNodes<'_, '_, 'e>) -> Result<Size> {
+        let size = Single.layout(nodes)?;
         if size == Size::ZERO {
             Ok(Size::ZERO)
         } else {
             let align = self.alignment.value_or_default();
             match align {
                 Align::TopLeft => Ok(size),
-                _ => Ok(layout.expand_all(size))
+                _ => Ok(nodes.constraints.expand_all(size)),
             }
         }
     }
@@ -82,7 +76,9 @@ pub(crate) struct AlignmentFactory;
 
 impl WidgetFactory for AlignmentFactory {
     fn make(&self, ctx: FactoryContext<'_>) -> Result<Box<dyn AnyWidget>> {
-        let widget = Alignment { alignment: ctx.get("align") };
+        let widget = Alignment {
+            alignment: ctx.get("align"),
+        };
         Ok(Box::new(widget))
     }
 }
@@ -90,14 +86,19 @@ impl WidgetFactory for AlignmentFactory {
 #[cfg(test)]
 mod test {
     use anathema_widget_core::layout::{Constraints, Padding};
-    use anathema_widget_core::testing::{FakeTerm, expression};
+    use anathema_widget_core::testing::{expression, FakeTerm};
 
     use super::*;
     use crate::testing::test_widget;
 
     fn align_widget(align: Align, expected: FakeTerm) {
         let text = expression("text", Some("AB"), [], []);
-        let alignment = expression("alignment", None, [("align".into(), ValueExpr::String(align.to_string().into()))], [text]);
+        let alignment = expression(
+            "alignment",
+            None,
+            [("align".into(), ValueExpr::String(align.to_string().into()))],
+            [text],
+        );
         test_widget(alignment, expected);
     }
 

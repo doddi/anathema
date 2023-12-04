@@ -2,8 +2,8 @@ use anathema_render::Size;
 use anathema_values::{Context, NodeId, ValueRef, Value};
 use anathema_widget_core::contexts::{LayoutCtx, PositionCtx};
 use anathema_widget_core::error::Result;
-use anathema_widget_core::layout::{HorzEdge, Layouts, VertEdge};
-use anathema_widget_core::{AnyWidget, Nodes, Pos, Widget, WidgetContainer, WidgetFactory, FactoryContext};
+use anathema_widget_core::layout::{HorzEdge, Layouts, VertEdge, Layout};
+use anathema_widget_core::{AnyWidget, Nodes, Pos, Widget, WidgetContainer, WidgetFactory, FactoryContext, LayoutNodes};
 
 use crate::layout::single::Single;
 
@@ -65,21 +65,17 @@ impl Widget for Position {
         Self::KIND
     }
 
-    fn layout<'e>(
-        &mut self,
-        children: &mut Nodes<'e>,
-        ctx: &LayoutCtx,
-        data: &Context<'_, 'e>,
-    ) -> Result<Size> {
-        let mut layout = Layouts::new(Single, ctx);
-        let mut size = layout.layout(children, data)?;
+    fn layout<'e>(&mut self, nodes: &mut LayoutNodes<'_, '_, 'e>) -> Result<Size> {
+        let mut layout = Single;
+        let mut size = layout.layout(nodes)?;
 
         if let HorzEdge::Right(_) = self.horz_edge {
-            size = layout.expand_horz(size);
+            size = nodes.constraints.expand_horz(size);
         }
         if let VertEdge::Bottom(_) = self.vert_edge {
-            size = layout.expand_vert(size);
+            size = nodes.constraints.expand_vert(size);
         }
+
         Ok(size)
     }
 

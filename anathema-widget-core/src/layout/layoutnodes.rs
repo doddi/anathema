@@ -10,8 +10,9 @@ use crate::{Nodes, Padding, WidgetContainer};
 
 pub struct LayoutNodes<'nodes, 'state, 'expr> {
     nodes: &'nodes mut Nodes<'expr>,
-    layout: LayoutCtx,
-    context: Context<'state, 'expr>,
+    pub constraints: Constraints,
+    pub padding: Padding,
+    context: &'state Context<'state, 'expr>,
 }
 
 impl<'nodes, 'state, 'expr> LayoutNodes<'nodes, 'state, 'expr> {
@@ -19,22 +20,32 @@ impl<'nodes, 'state, 'expr> LayoutNodes<'nodes, 'state, 'expr> {
         nodes: &'nodes mut Nodes<'expr>,
         constraints: Constraints,
         padding: Padding,
-        context: Context<'state, 'expr>,
+        context: &'state Context<'state, 'expr>,
     ) -> Self {
-        let layout = LayoutCtx::new(constraints, padding);
         Self {
             nodes,
-            layout,
+            constraints,
+            padding,
             context,
         }
     }
 
     pub fn set_constraints(&mut self, constraints: Constraints) {
-        self.layout.constraints = constraints;
+        self.constraints = constraints;
     }
 
-    pub fn padded_constraints(&self) -> Constraints {
-        self.layout.padded_constraints()
+    // pub fn padded_constraints(&self) -> Constraints {
+    //     panic!()
+    //     // self.layout.padded_constraints()
+    // }
+
+    pub fn padding_size(&self) -> Size {
+        if self.padding != Padding::ZERO {
+            let padding = self.padding;
+            Size::new(padding.left + padding.right, padding.top + padding.bottom)
+        } else {
+            Size::ZERO
+        }
     }
 
     pub fn next<F>(&mut self, mut f: F) -> Result<()>
@@ -43,7 +54,6 @@ impl<'nodes, 'state, 'expr> LayoutNodes<'nodes, 'state, 'expr> {
     {
         self.nodes.next(
             &self.context,
-            &self.layout,
             &mut |widget, children, context| {
                 let node = LayoutNode {
                     widget,
@@ -57,11 +67,13 @@ impl<'nodes, 'state, 'expr> LayoutNodes<'nodes, 'state, 'expr> {
         Ok(())
     }
 
-    pub fn for_each<F>(&mut self, mut f: F)
+    pub fn for_each<F>(&mut self, mut f: F) -> Result<()> 
     where
         F: FnMut(LayoutNode<'_, '_, 'expr>) -> Result<()>
     {
-        while let Ok(()) = self.next(&mut f) {}
+        loop {
+            self.next(&mut f)?;
+        }
     }
 
 

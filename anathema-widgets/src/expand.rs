@@ -2,9 +2,10 @@ use anathema_render::{Size, Style};
 use anathema_values::{Attributes, Context, NodeId, Value, ValueExpr};
 use anathema_widget_core::contexts::{LayoutCtx, PaintCtx, PositionCtx, WithSize};
 use anathema_widget_core::error::Result;
-use anathema_widget_core::layout::{Axis, Layouts};
+use anathema_widget_core::layout::{Axis, Layout, Layouts};
 use anathema_widget_core::{
-    AnyWidget, FactoryContext, LocalPos, Nodes, Widget, WidgetContainer, WidgetFactory, WidgetStyle,
+    AnyWidget, FactoryContext, LayoutNodes, LocalPos, Nodes, Widget, WidgetContainer,
+    WidgetFactory, WidgetStyle,
 };
 
 use crate::layout::single::Single;
@@ -90,20 +91,15 @@ impl Widget for Expand {
         Self::KIND
     }
 
-    fn layout<'e>(
-        &mut self,
-        children: &mut Nodes<'e>,
-        layout: &LayoutCtx,
-        data: &Context<'_, 'e>,
-    ) -> Result<Size> {
-        let mut size = Layouts::new(Single, layout).layout(children, data)?;
+    fn layout<'e>(&mut self, nodes: &mut LayoutNodes<'_, '_, 'e>) -> Result<Size> {
+        let mut size = Single.layout(nodes)?;
 
         match self.axis.value_ref() {
-            Some(Axis::Horizontal) => size.width = layout.constraints.max_width,
-            Some(Axis::Vertical) => size.height = layout.constraints.max_height,
+            Some(Axis::Horizontal) => size.width = nodes.constraints.max_width,
+            Some(Axis::Vertical) => size.height = nodes.constraints.max_height,
             None => {
-                size.width = layout.constraints.max_width;
-                size.height = layout.constraints.max_height;
+                size.width = nodes.constraints.max_width;
+                size.height = nodes.constraints.max_height;
             }
         }
 
@@ -164,9 +160,7 @@ mod test {
         // let border = Border::thin(None, None);
         // let body = [template("expand", (), vec![])];
 
-        let border = expression("border", None, [], [
-            expression("expand", None, [], [])
-        ]);
+        let border = expression("border", None, [], [expression("expand", None, [], [])]);
 
         test_widget(
             border,
@@ -187,14 +181,35 @@ mod test {
 
     #[test]
     fn expand_horz_with_factors() {
-        let hstack = expression("hstack", None, [], [
-            expression("border", None, [], [
-                expression("expand", None, [("factor".into(), 1.into()),], [])
-            ]),
-            expression("border", None, [], [
-                expression("expand", None, [("factor".into(), 2.into()),], [])
-            ]),
-        ]);
+        let hstack = expression(
+            "hstack",
+            None,
+            [],
+            [
+                expression(
+                    "border",
+                    None,
+                    [],
+                    [expression(
+                        "expand",
+                        None,
+                        [("factor".into(), 1.into())],
+                        [],
+                    )],
+                ),
+                expression(
+                    "border",
+                    None,
+                    [],
+                    [expression(
+                        "expand",
+                        None,
+                        [("factor".into(), 2.into())],
+                        [],
+                    )],
+                ),
+            ],
+        );
 
         test_widget(
             hstack,
@@ -215,14 +230,35 @@ mod test {
 
     #[test]
     fn expand_vert_with_factors() {
-        let vstack = expression("vstack", None, [], [
-            expression("border", None, [], [
-                expression("expand", None, [("factor".into(), 1.into()),], [])
-            ]),
-            expression("border", None, [], [
-                expression("expand", None, [("factor".into(), 2.into()),], [])
-            ]),
-        ]);
+        let vstack = expression(
+            "vstack",
+            None,
+            [],
+            [
+                expression(
+                    "border",
+                    None,
+                    [],
+                    [expression(
+                        "expand",
+                        None,
+                        [("factor".into(), 1.into())],
+                        [],
+                    )],
+                ),
+                expression(
+                    "border",
+                    None,
+                    [],
+                    [expression(
+                        "expand",
+                        None,
+                        [("factor".into(), 2.into())],
+                        [],
+                    )],
+                ),
+            ],
+        );
 
         test_widget(
             vstack,

@@ -12,9 +12,9 @@ pub struct SpacerLayout;
 impl Layout for SpacerLayout {
     fn layout<'nodes, 'expr, 'state>(
         &mut self,
-        nodes: LayoutNodes<'nodes, 'expr, 'state>,
+        nodes: &mut LayoutNodes<'nodes, 'expr, 'state>,
     ) -> Result<Size> {
-        let size = Size::new(layout.constraints.min_width, layout.constraints.min_height);
+        let size = Size::new(nodes.constraints.min_width, nodes.constraints.min_height);
         Ok(size)
     }
 }
@@ -25,7 +25,7 @@ impl Layout for SpacerLayout {
 /// whereas this does the layout of multiple [`Spacer`]s
 /// inside already evaluated children.
 pub fn layout<'nodes, 'expr, 'state>(
-    nodes: LayoutNodes<'nodes, 'expr, 'state>,
+    nodes: &mut LayoutNodes<'nodes, 'expr, 'state>,
     // ctx: &LayoutCtx,
     // children: &mut Nodes<'e>,
     axis: Axis,
@@ -38,8 +38,7 @@ pub fn layout<'nodes, 'expr, 'state>(
         return Ok(final_size);
     }
 
-    // TODO: should these be padded?
-    let mut constraints = nodes.padded_constraints();
+    let mut constraints = nodes.constraints;
     match axis {
         Axis::Horizontal => {
             constraints.max_width /= count;
@@ -52,7 +51,7 @@ pub fn layout<'nodes, 'expr, 'state>(
     };
     nodes.set_constraints(constraints);
 
-    for spacer in nodes.filter(|widget| widget.kind() == Spacer::KIND) {
+    for mut spacer in nodes.filter(|widget| widget.kind() == Spacer::KIND) {
         let size = spacer.layout(constraints)?;
 
         match axis {
