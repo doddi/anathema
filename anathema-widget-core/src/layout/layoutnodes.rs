@@ -1,4 +1,4 @@
-use std::ops::{Deref, DerefMut};
+use std::ops::{Deref, DerefMut, ControlFlow};
 
 use anathema_render::Size;
 use anathema_values::Context;
@@ -72,7 +72,22 @@ impl<'nodes, 'state, 'expr> LayoutNodes<'nodes, 'state, 'expr> {
         F: FnMut(LayoutNode<'_, '_, 'expr>) -> Result<()>
     {
         loop {
-            self.next(&mut f)?;
+            let res = self.nodes.next(
+                &self.context,
+                &mut |widget, children, context| {
+                    let node = LayoutNode {
+                        widget,
+                        children,
+                        context,
+                    };
+                    f(node)
+                },
+            )?;
+
+            match res {
+                ControlFlow::Break(()) => break Ok(()),
+                ControlFlow::Continue(()) => continue,
+            }
         }
     }
 
