@@ -20,10 +20,7 @@ pub enum Instruction {
         data: ValueId,
         size: usize,
     },
-    View {
-        ident: StringId,
-        scope_size: usize,
-    },
+    View(StringId),
     Node {
         ident: StringId,
         scope_size: usize,
@@ -73,7 +70,7 @@ impl Compiler {
             self.ep += 1;
             match expr {
                 Expression::Node { ident, scope_size } => self.compile_node(*ident, *scope_size),
-                Expression::View { ident, scope_size } => self.compile_view(*ident, *scope_size),
+                Expression::View(ident) => self.compile_view(*ident),
                 Expression::LoadText(index) => self.compile_text(*index),
                 Expression::LoadAttribute { key, value } => self.compile_attribute(*key, *value),
                 Expression::If { cond, size } => {
@@ -92,11 +89,8 @@ impl Compiler {
         Ok(())
     }
 
-    fn compile_view(&mut self, ident: StringId, scope_size: usize) -> Result<()> {
-        self.output.push(Instruction::View {
-            ident,
-            scope_size,
-        });
+    fn compile_view(&mut self, ident: StringId) -> Result<()> {
+        self.output.push(Instruction::View(ident));
         Ok(())
     }
 

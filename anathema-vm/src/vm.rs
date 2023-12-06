@@ -1,6 +1,7 @@
 use anathema_compiler::{Constants, Instruction};
 use anathema_widget_core::generator::Expression;
 
+use crate::ViewTemplates;
 use crate::error::Result;
 use crate::scope::Scope;
 
@@ -17,9 +18,9 @@ impl VirtualMachine {
         }
     }
 
-    pub fn exec(self) -> Result<Vec<Expression>> {
+    pub fn exec(self, views: &mut ViewTemplates) -> Result<Vec<Expression>> {
         let mut root_scope = Scope::new(self.instructions, &self.consts);
-        root_scope.exec()
+        root_scope.exec(views)
     }
 }
 

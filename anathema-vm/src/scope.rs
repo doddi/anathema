@@ -4,7 +4,7 @@ use anathema_widget_core::generator::{
     ControlFlow, ElseExpr, Expression, IfExpr, LoopExpr, SingleNode, ViewExpr,
 };
 
-use crate::error::Result;
+use crate::{error::Result, ViewTemplates};
 
 pub(crate) struct Scope<'vm> {
     instructions: Vec<Instruction>,
@@ -19,7 +19,7 @@ impl<'vm> Scope<'vm> {
         }
     }
 
-    pub fn exec(&mut self) -> Result<Vec<Expression>> {
+    pub fn exec(&mut self, views: &mut ViewTemplates) -> Result<Vec<Expression>> {
         let mut nodes = vec![];
 
         if self.instructions.is_empty() {
@@ -29,12 +29,11 @@ impl<'vm> Scope<'vm> {
         loop {
             let instruction = self.instructions.remove(0);
             match instruction {
-                Instruction::View { ident, scope_size } => {
-                    let view = self.view(ident, scope_size)?;
-                    nodes.push(view);
+                Instruction::View(ident) => {
+                    nodes.push(self.view(ident, views)?);
                 }
                 Instruction::Node { ident, scope_size } => {
-                    nodes.push(self.node(ident, scope_size)?)
+                    nodes.push(self.node(ident, scope_size, views)?)
                 }
                 Instruction::For {
                     binding,
@@ -46,7 +45,7 @@ impl<'vm> Scope<'vm> {
                     let collection = self.consts.lookup_value(data).clone();
 
                     let body = self.instructions.drain(..size).collect();
-                    let body = Scope::new(body, &self.consts).exec()?;
+                    let body = Scope::new(body, &self.consts).exec(views)?;
                     let template = Expression::Loop(LoopExpr {
                         binding: binding.into(),
                         collection,
@@ -59,7 +58,7 @@ impl<'vm> Scope<'vm> {
                     let cond = self.consts.lookup_value(cond);
 
                     let body = self.instructions.drain(..size).collect::<Vec<_>>();
-                    let body = Scope::new(body, &self.consts).exec()?;
+                    let body = Scope::new(body, &self.consts).exec(views)?;
 
                     let mut control_flow = ControlFlow {
                         if_expr: IfExpr {
@@ -78,7 +77,7 @@ impl<'vm> Scope<'vm> {
                         let cond = cond.map(|cond| self.consts.lookup_value(cond));
 
                         let body = self.instructions.drain(..size).collect();
-                        let body = Scope::new(body, &self.consts).exec()?;
+                        let body = Scope::new(body, &self.consts).exec(views)?;
 
                         control_flow.elses.push(ElseExpr {
                             cond,
@@ -105,7 +104,7 @@ impl<'vm> Scope<'vm> {
         Ok(nodes)
     }
 
-    fn node(&mut self, ident: StringId, scope_size: usize) -> Result<Expression> {
+    fn node(&mut self, ident: StringId, scope_size: usize, views: &mut ViewTemplates) -> Result<Expression> {
         let ident = self.consts.lookup_string(ident);
 
         let mut attributes = Attributes::new();
@@ -131,7 +130,7 @@ impl<'vm> Scope<'vm> {
         self.instructions.drain(..ip);
 
         let scope = self.instructions.drain(..scope_size).collect();
-        let children = Scope::new(scope, &self.consts).exec()?;
+        let children = Scope::new(scope, &self.consts).exec(views)?;
 
         let node = Expression::Node(SingleNode {
             ident: ident.to_string(),
@@ -143,9 +142,8 @@ impl<'vm> Scope<'vm> {
         Ok(node)
     }
 
-    fn view(&mut self, ident: StringId, scope_size: usize) -> Result<Expression> {
+    fn view(&mut self, ident: StringId, views: &mut ViewTemplates) -> Result<Expression> {
         let ident = self.consts.lookup_string(ident).to_owned();
-        let scope = self.instructions.drain(..scope_size).collect();
 
         let state = match self.instructions.get(0) {
             Some(Instruction::LoadValue(i)) => {
@@ -156,7 +154,7 @@ impl<'vm> Scope<'vm> {
             _ => None,
         };
 
-        let body = Scope::new(scope, &self.consts).exec()?;
+        let body = views.get(&ident)?;
 
         let node = Expression::View(ViewExpr {
             id: ident,

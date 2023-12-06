@@ -22,7 +22,7 @@ struct DoesEverything {
 // -----------------------------------------------------------------------------
 //   - A single Node -
 // -----------------------------------------------------------------------------
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct SingleNode {
     pub ident: String,
     pub text: Option<ValueExpr>,
@@ -116,7 +116,7 @@ impl<'e> Collection<'e> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct LoopExpr {
     pub body: Vec<Expression>,
     pub binding: Path,
@@ -170,7 +170,7 @@ impl LoopExpr {
 // -----------------------------------------------------------------------------
 //   - Controlflow -
 // -----------------------------------------------------------------------------
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ControlFlow {
     pub if_expr: IfExpr,
     pub elses: Vec<ElseExpr>,
@@ -192,7 +192,7 @@ impl ControlFlow {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ViewExpr {
     pub id: String,
     pub state: Option<ValueExpr>,
@@ -222,7 +222,7 @@ impl ViewExpr {
 // -----------------------------------------------------------------------------
 //   - Expression -
 // -----------------------------------------------------------------------------
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Expression {
     Node(SingleNode),
     View(ViewExpr),
