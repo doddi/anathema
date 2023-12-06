@@ -14,6 +14,7 @@ use crate::layout::single::Single;
 /// See [`Align`](crate::layout::Align) for more information.
 ///
 /// If the alignment has no children it will have a size of zero.
+#[derive(Debug)]
 pub struct Alignment {
     /// The alignment
     pub alignment: Value<Align>,

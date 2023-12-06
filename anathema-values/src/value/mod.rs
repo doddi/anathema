@@ -6,7 +6,7 @@ pub use self::num::Num;
 pub use self::owned::Owned;
 use crate::hashmap::HashMap;
 use crate::map::Map;
-use crate::{Collection, List, Path, ValueExpr};
+use crate::{Collection, List, Path, ValueExpr, State};
 
 mod num;
 mod owned;
@@ -19,7 +19,7 @@ mod owned;
 #[derive(Debug, Clone, Default)]
 pub enum ValueRef<'a> {
     Str(&'a str),
-    Map(&'a dyn Collection),
+    Map(&'a dyn State),
     List(&'a dyn Collection),
     Expressions(&'a [ValueExpr]),
     ExpressionMap(&'a HashMap<String, ValueExpr>),

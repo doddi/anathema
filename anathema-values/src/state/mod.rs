@@ -5,7 +5,7 @@ use crate::{NodeId, Path, ValueRef};
 
 mod value;
 
-pub trait State {
+pub trait State : std::fmt::Debug {
     /// Get a value reference from the state
     fn get(&self, key: &Path, node_id: Option<&NodeId>) -> ValueRef<'_>;
 

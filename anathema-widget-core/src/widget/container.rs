@@ -16,6 +16,7 @@ use crate::{Display, LocalPos, Padding, Pos, Region, LayoutNodes};
 /// * [`layout`](Self::layout)
 /// * [`position`](Self::position)
 /// * [`paint`](Self::paint)
+#[derive(Debug)]
 pub struct WidgetContainer<'e> {
     pub(crate) background: Value<Color>,
     pub(crate) display: Value<Display>,
@@ -187,12 +188,6 @@ impl WidgetContainer<'_> {
     pub fn update(&mut self, context: &Context<'_, '_>, node_id: &NodeId) {
         self.display.resolve(context, Some(node_id));
         self.inner.update(context, node_id);
-    }
-}
-
-impl Debug for WidgetContainer<'_> {
-    fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        todo!()
     }
 }
 

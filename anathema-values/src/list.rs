@@ -96,7 +96,7 @@ where
     }
 }
 
-impl<T> State for List<T>
+impl<T: Debug> State for List<T>
 where
     for<'a> &'a T: Into<ValueRef<'a>>,
 {
@@ -112,7 +112,10 @@ where
                 value.deref().into()
             }
             Path::Composite(lhs, rhs) => match self.get(lhs, node_id) {
-                ValueRef::Map(collection) | ValueRef::List(collection) => {
+                ValueRef::Map(map) => {
+                    map.get(rhs, node_id)
+                }
+                ValueRef::List(collection) => {
                     collection.get(rhs, node_id)
                 }
                 _ => ValueRef::Empty,

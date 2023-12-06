@@ -1,5 +1,6 @@
 use std::any::Any;
 use std::ops::{Deref, DerefMut};
+use std::fmt::Debug;
 
 use anathema_render::Size;
 use anathema_values::{Context, NodeId};
@@ -71,7 +72,7 @@ impl Widget for Box<dyn Widget> {
     }
 }
 
-pub trait AnyWidget {
+pub trait AnyWidget: Debug {
     fn as_any_ref(&self) -> &dyn Any;
 
     fn as_any_mut(&mut self) -> &mut dyn Any;
@@ -109,7 +110,7 @@ impl Widget for Box<dyn AnyWidget> {
     }
 }
 
-impl<T: Widget + 'static> AnyWidget for T {
+impl<T: Debug + Widget + 'static> AnyWidget for T {
     fn as_any_ref(&self) -> &dyn Any {
         self
     }

@@ -50,5 +50,11 @@ pub fn state_derive(strct: syn::ItemStruct) -> Result {
                 }
             }
         }
+
+        impl<'a> Into<ValueRef<'a>> for &'a #name {
+            fn into(self) -> ::anathema::values::ValueRef<'a> {
+                ::anathema::values::ValueRef::Map(self)
+            }
+        }
     })
 }

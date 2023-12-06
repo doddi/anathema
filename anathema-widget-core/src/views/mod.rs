@@ -2,6 +2,7 @@ use std::any::Any;
 use std::collections::BTreeSet;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, OnceLock};
+use std::fmt::Debug;
 
 use anathema_values::hashmap::HashMap;
 use anathema_values::NodeId;
@@ -12,9 +13,9 @@ use crate::error::{Error, Result};
 pub type ViewFn = dyn Fn() -> Box<dyn AnyView> + Send;
 
 static TAB_INDEX: AtomicUsize = AtomicUsize::new(0);
-static TAB_VIEWS: OnceLock<Mutex<BTreeSet<NodeId>>> = OnceLock::new();
-static REGISTERED_VIEWS: OnceLock<Mutex<HashMap<String, Box<ViewFn>>>> = OnceLock::new();
+static TAB_VIEWS: Mutex<BTreeSet<NodeId>> = Mutex::new(BTreeSet::new());
 static VIEWS: Mutex<BTreeSet<NodeId>> = Mutex::new(BTreeSet::new());
+static REGISTERED_VIEWS: OnceLock<Mutex<HashMap<String, Box<ViewFn>>>> = OnceLock::new();
 
 pub struct RegisteredViews;
 
@@ -22,7 +23,7 @@ impl RegisteredViews {
     pub fn add<T, F>(key: String, f: F)
     where
         F: Send + 'static + Fn() -> T,
-        T: 'static + View,
+        T: 'static + View + Debug,
     {
         REGISTERED_VIEWS
             .get_or_init(Default::default)
@@ -47,7 +48,7 @@ impl TabIndex {
     fn next(&mut self) {
         TAB_INDEX.fetch_add(1, Ordering::Relaxed);
 
-        let len = TAB_VIEWS.get_or_init(Default::default).lock().len();
+        let len = TAB_VIEWS.lock().len();
 
         if TAB_INDEX.load(Ordering::Relaxed) == len {
             TAB_INDEX.store(0, Ordering::Relaxed);
@@ -56,27 +57,25 @@ impl TabIndex {
 
     pub(crate) fn insert(node_id: NodeId) {
         TAB_VIEWS
-            .get_or_init(Default::default)
             .lock()
             .insert(node_id);
     }
 
     fn remove(node_id: &NodeId) {
         TAB_VIEWS
-            .get_or_init(Default::default)
             .lock()
             .remove(node_id);
     }
 
     pub(crate) fn remove_all<'a>(node_ids: impl Iterator<Item = &'a NodeId>) {
-        let mut views = TAB_VIEWS.get_or_init(Default::default).lock();
+        let mut views = TAB_VIEWS.lock();
         node_ids.for_each(|id| {
             views.remove(id);
         });
     }
 
     pub(crate) fn add_all<'a>(node_ids: impl Iterator<Item = &'a NodeId>) {
-        let mut views = TAB_VIEWS.get_or_init(Default::default).lock();
+        let mut views = TAB_VIEWS.lock();
 
         node_ids.cloned().for_each(|id| {
             views.insert(id);
@@ -87,6 +86,10 @@ impl TabIndex {
 pub struct Views;
 
 impl Views {
+    pub fn all() -> Vec<NodeId> {
+        VIEWS.lock().iter().cloned().collect()
+    }
+
     pub(crate) fn insert(node_id: NodeId) {
         VIEWS.lock().insert(node_id);
     }
@@ -104,13 +107,13 @@ pub trait View {
     fn make() -> Self;
 }
 
-pub trait AnyView {
+pub trait AnyView : Debug {
     fn any_event(&mut self, ev: (), state: &mut dyn Any) -> ();
 }
 
 impl<T> AnyView for T
 where
-    T: View,
+    T: View + Debug,
 {
     fn any_event(&mut self, ev: (), state: &mut dyn Any) -> () {
         if let Some(state) = state.downcast_mut::<T::State>() {

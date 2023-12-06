@@ -194,7 +194,7 @@ where
     pub fn register_view<F, T>(&self, id: &str, view: F)
     where
         F: Send + 'static + Fn() -> T,
-        T: 'static + View
+        T: 'static + View + std::fmt::Debug,
     {
         RegisteredViews::add(id.to_string(), view)
     }

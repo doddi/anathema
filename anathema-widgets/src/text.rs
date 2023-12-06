@@ -26,6 +26,7 @@ use crate::layout::text::{Entry, Range, TextAlignment, TextLayout, Wrap};
 /// Note: Spans, unlike other widgets, does not require a widget id
 ///
 /// A `Text` widget will be as wide as its text.
+#[derive(Debug)]
 pub struct Text {
     /// Word wrapping
     pub word_wrap: Value<Wrap>,

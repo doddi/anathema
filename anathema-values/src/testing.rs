@@ -57,7 +57,7 @@ pub struct TestExpression<T> {
     pub expr: Box<ValueExpr>,
 }
 
-impl<T> TestExpression<T>
+impl<T: std::fmt::Debug> TestExpression<T>
 where
     for<'a> &'a T: Into<ValueRef<'a>>,
 {

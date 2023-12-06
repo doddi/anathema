@@ -111,6 +111,7 @@ pub(crate) struct Single<'e> {
     pub(crate) children: Nodes<'e>,
 }
 
+#[derive(Debug)]
 pub(crate) enum NodeKind<'e> {
     Single(Single<'e>),
     Loop(LoopNode<'e>),
@@ -118,16 +119,16 @@ pub(crate) enum NodeKind<'e> {
     View(Box<dyn AnyView>, Nodes<'e>),
 }
 
-impl fmt::Debug for NodeKind<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Single(s) => write!(f, "Single<{s:?}>"),
-            Self::Loop(l) => write!(f, "Loop<{l:?}>"),
-            Self::ControlFlow(if_else) => write!(f, "If/Else<{if_else:?}>"),
-            Self::View(_, n) => write!(f, "<View>"),
-        }
-    }
-}
+// impl fmt::Debug for NodeKind<'_> {
+//     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+//         match self {
+//             Self::Single(s) => write!(f, "Single<{s:?}>"),
+//             Self::Loop(l) => write!(f, "Loop<{l:?}>"),
+//             Self::ControlFlow(if_else) => write!(f, "If/Else<{if_else:?}>"),
+//             Self::View(_, n) => write!(f, "<View>"),
+//         }
+//     }
+// }
 
 #[derive(Debug)]
 // TODO: possibly optimise this by making nodes optional on the node
