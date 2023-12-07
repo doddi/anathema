@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use anathema_values::state::State;
-use anathema_widget_core::generator::Nodes;
+use anathema_widget_core::nodes::Nodes;
 use crossterm::event::{read, Event as CTEvent};
 pub use crossterm::event::{
     KeyCode, KeyEvent, KeyEventKind, KeyEventState, KeyModifiers, MouseButton, MouseEventKind,

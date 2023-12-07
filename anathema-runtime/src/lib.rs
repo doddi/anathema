@@ -6,8 +6,9 @@ use anathema_values::state::State;
 use anathema_values::{drain_dirty_nodes, Context};
 use anathema_widget_core::contexts::{LayoutCtx, PaintCtx};
 use anathema_widget_core::error::Result;
-use anathema_widget_core::generator::{make_it_so, Expression, Nodes};
+use anathema_widget_core::expressions::Expression;
 use anathema_widget_core::layout::Constraints;
+use anathema_widget_core::nodes::{make_it_so, Nodes};
 use anathema_widget_core::views::{AnyView, RegisteredViews, TabIndex, View, ViewFn, Views};
 use anathema_widget_core::{LayoutNodes, Padding, Pos};
 use anathema_widgets::register_default_widgets;
@@ -169,7 +170,7 @@ where
 
                 if let Some(id) = TabIndex::current() {
                     // if let Some(Node { kind: NodeKind::View(view), .. }) = self.nodes.query().get(id) {
-                        // if let view.on_event(event);
+                    // if let view.on_event(event);
                     // }
                 }
             }

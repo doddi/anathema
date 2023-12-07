@@ -1,6 +1,6 @@
 use anathema_compiler::{Constants, Instruction, StringId};
 use anathema_values::{Attributes, ValueExpr};
-use anathema_widget_core::generator::{
+use anathema_widget_core::expressions::{
     ControlFlow, ElseExpr, Expression, IfExpr, LoopExpr, SingleNode, ViewExpr,
 };
 

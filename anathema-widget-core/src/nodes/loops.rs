@@ -7,13 +7,12 @@ use anathema_values::{
 use super::Nodes;
 use crate::contexts::LayoutCtx;
 use crate::error::Result;
-use crate::generator::expressions::Collection;
-use crate::generator::Expression;
+use crate::expressions::{Collection, Expression};
 use crate::views::TabIndex;
 use crate::WidgetContainer;
 
 #[derive(Debug)]
-pub(in crate::generator) struct Iteration<'e> {
+pub(in crate::nodes) struct Iteration<'e> {
     pub(super) body: Nodes<'e>,
     node_id: NodeId,
 }
@@ -42,7 +41,7 @@ pub struct LoopNode<'e> {
 }
 
 impl<'e> LoopNode<'e> {
-    pub(in crate::generator) fn new(
+    pub(crate) fn new(
         expressions: &'e [Expression],
         binding: Path,
         collection: Collection<'e>,
@@ -165,12 +164,7 @@ impl<'e> LoopNode<'e> {
         Box::new(self.iterations.iter().flat_map(|i| i.body.node_ids()))
     }
 
-    pub(super) fn update(
-        &mut self,
-        node_id: &[usize],
-        change: &Change,
-        context: &Context<'_, '_>,
-    ) {
+    pub(super) fn update(&mut self, node_id: &[usize], change: &Change, context: &Context<'_, '_>) {
         for iter in &mut self.iterations {
             if iter.node_id.contains(node_id) {
                 iter.body.update(node_id, change, context);

@@ -1,5 +1,5 @@
 use anathema_compiler::{Constants, Instruction};
-use anathema_widget_core::generator::Expression;
+use anathema_widget_core::expressions::Expression;
 
 use crate::ViewTemplates;
 use crate::error::Result;

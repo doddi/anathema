@@ -3,7 +3,7 @@ mod scope;
 mod vm;
 
 use anathema_values::hashmap::HashMap;
-use anathema_widget_core::generator::Expression;
+use anathema_widget_core::expressions::Expression;
 pub use vm::VirtualMachine;
 
 use self::error::Result;

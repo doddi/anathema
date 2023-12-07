@@ -5,10 +5,9 @@ use anathema_values::{
 };
 
 pub use self::controlflow::{ElseExpr, IfExpr};
-use super::nodes::{IfElse, LoopNode, Single, View};
 use crate::error::Result;
 use crate::factory::FactoryContext;
-use crate::generator::nodes::{Node, NodeKind, Nodes};
+use crate::nodes::{IfElse, LoopNode, Node, NodeKind, Nodes, Single, View};
 use crate::views::{AnyView, RegisteredViews, TabIndex, Views};
 use crate::{Display, Factory, Padding, Pos, WidgetContainer};
 
@@ -69,6 +68,7 @@ impl SingleNode {
             kind: NodeKind::Single(Single {
                 widget,
                 children: Nodes::new(&self.children, node_id.child(0)),
+                ident: &self.ident,
             }),
             node_id,
             scope,
@@ -82,7 +82,7 @@ impl SingleNode {
 //   - Loop -
 // -----------------------------------------------------------------------------
 #[derive(Debug)]
-pub(in crate::generator) enum Collection<'e> {
+pub(crate) enum Collection<'e> {
     Static(&'e [ValueExpr]),
     State {
         len: usize,

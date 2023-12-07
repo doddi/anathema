@@ -1,6 +1,6 @@
 use anathema_values::{Change, Context, DynValue, NodeId, Resolver, Value};
 
-use crate::generator::expressions::{ElseExpr, IfExpr};
+use crate::expressions::{ElseExpr, IfExpr};
 use crate::views::TabIndex;
 use crate::{Nodes, WidgetContainer};
 

@@ -1,3 +1,6 @@
+#[cfg(any(attribute = "testing", test))]
+mod testing;
+
 use std::fmt;
 use std::iter::once;
 use std::ops::ControlFlow;
@@ -8,19 +11,24 @@ pub(crate) use self::controlflow::IfElse;
 pub(crate) use self::loops::LoopNode;
 use crate::contexts::LayoutCtx;
 use crate::error::Result;
-use crate::generator::expressions::Expression;
+use crate::expressions::Expression;
 use crate::views::{AnyView, RegisteredViews, TabIndex, Views};
 use crate::WidgetContainer;
 
 mod controlflow;
 mod loops;
+mod query;
 pub mod visitor;
+
+pub fn make_it_so(expressions: &[crate::expressions::Expression]) -> Nodes<'_> {
+    Nodes::new(expressions, 0.into())
+}
 
 #[derive(Debug)]
 pub struct Node<'e> {
     pub node_id: NodeId,
     pub(crate) kind: NodeKind<'e>,
-    pub(super) scope: LocalScope<'e>,
+    pub(crate) scope: LocalScope<'e>,
 }
 
 impl<'e> Node<'e> {
@@ -99,7 +107,7 @@ impl<'e> Node<'e> {
 impl<'e> Node<'e> {
     pub(crate) fn single(&mut self) -> (&mut WidgetContainer<'e>, &mut Nodes<'e>) {
         match &mut self.kind {
-            NodeKind::Single(Single { widget, children }) => (widget, children),
+            NodeKind::Single(Single { widget, children, .. }) => (widget, children),
             _ => panic!(),
         }
     }
@@ -109,6 +117,7 @@ impl<'e> Node<'e> {
 pub(crate) struct Single<'e> {
     pub(crate) widget: WidgetContainer<'e>,
     pub(crate) children: Nodes<'e>,
+    pub(crate) ident: &'e str,
 }
 
 #[derive(Debug)]
@@ -289,7 +298,9 @@ fn update(nodes: &mut [Node<'_>], node_id: &[usize], change: &Change, context: &
                 }
                 NodeKind::Loop(loop_node) => return loop_node.update(node_id, change, &context),
                 NodeKind::ControlFlow(if_else) => return if_else.update(node_id, change, &context),
-                NodeKind::View(View { nodes, .. }) => return nodes.update(node_id, change, &context),
+                NodeKind::View(View { nodes, .. }) => {
+                    return nodes.update(node_id, change, &context)
+                }
             }
         }
     }

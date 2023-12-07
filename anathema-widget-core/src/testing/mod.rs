@@ -4,7 +4,7 @@ use anathema_values::testing::TestState;
 
 use super::WidgetContainer;
 use crate::contexts::PaintCtx;
-use crate::generator::Expression;
+use crate::expressions::Expression;
 use crate::layout::Constraints;
 use crate::{Nodes, Pos, Widget};
 

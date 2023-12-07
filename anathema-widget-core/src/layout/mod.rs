@@ -11,7 +11,7 @@ pub use self::constraints::Constraints;
 pub use self::padding::Padding;
 use crate::contexts::LayoutCtx;
 use crate::error::Result;
-use crate::generator::Nodes;
+use crate::nodes::Nodes;
 
 mod constraints;
 mod layoutnodes;

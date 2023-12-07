@@ -2,7 +2,7 @@ use anathema_render::Size;
 use anathema_values::Context;
 use anathema_widget_core::contexts::LayoutCtx;
 use anathema_widget_core::error::{Error, Result};
-use anathema_widget_core::generator::Nodes;
+use anathema_widget_core::nodes::Nodes;
 use anathema_widget_core::layout::{Constraints, Layout};
 use anathema_widget_core::{LayoutNodes, WidgetContainer};
 
