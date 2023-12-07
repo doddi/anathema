@@ -56,6 +56,8 @@ where
         events: E,
         event_receiver: ER,
     ) -> Result<Self> {
+        let nodes = make_it_so(expressions);
+
         register_default_widgets()?;
         enable_raw_mode()?;
         let mut stdout = stdout();
@@ -64,8 +66,6 @@ where
         let size: Size = size()?.into();
         let constraints = Constraints::new(Some(size.width), Some(size.height));
         let screen = Screen::new(size);
-
-        let nodes = make_it_so(expressions);
 
         let inst = Self {
             output: stdout,
@@ -94,6 +94,8 @@ where
             node.layout(self.constraints)?;
             Ok(())
         })?;
+
+        // panic!("{:#?}", self.nodes);
 
         Ok(())
     }
@@ -163,6 +165,12 @@ where
                     Event::Focus => (), //self.meta.focus = true,
                     Event::Quit => break 'run Ok(()),
                     _ => {}
+                }
+
+                if let Some(id) = TabIndex::current() {
+                    // if let Some(Node { kind: NodeKind::View(view), .. }) = self.nodes.query().get(id) {
+                        // if let view.on_event(event);
+                    // }
                 }
             }
 

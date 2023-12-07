@@ -1,8 +1,8 @@
+use std::fmt;
 use std::iter::once;
 use std::ops::ControlFlow;
-use std::fmt;
 
-use anathema_values::{Change, Context, LocalScope, NodeId, Resolver, State, ValueRef};
+use anathema_values::{Change, Context, LocalScope, NodeId, Resolver, State, ValueExpr, ValueRef};
 
 pub(crate) use self::controlflow::IfElse;
 pub(crate) use self::loops::LoopNode;
@@ -50,7 +50,7 @@ impl<'e> Node<'e> {
 
                 Ok(ControlFlow::Continue(()))
             }
-            NodeKind::View(_, nodes) => {
+            NodeKind::View(View { nodes, .. }) => {
                 while let Ok(res) = nodes.next(context, f) {
                     match res {
                         ControlFlow::Continue(()) => continue,
@@ -67,7 +67,7 @@ impl<'e> Node<'e> {
             NodeKind::Single(Single { children, .. }) => children.reset_cache(),
             NodeKind::Loop(loop_state) => loop_state.reset_cache(),
             NodeKind::ControlFlow(if_else) => if_else.reset_cache(),
-            NodeKind::View(_, nodes) => nodes.reset_cache(),
+            NodeKind::View(View { nodes, .. }) => nodes.reset_cache(),
         }
     }
 
@@ -90,7 +90,7 @@ impl<'e> Node<'e> {
             // that needs updating, so an update should never end with the
             // control flow node
             NodeKind::ControlFlow(_) => {}
-            NodeKind::View(_, _) => todo!(),
+            NodeKind::View(View { .. }) => todo!(),
         }
     }
 }
@@ -112,11 +112,18 @@ pub(crate) struct Single<'e> {
 }
 
 #[derive(Debug)]
+pub(crate) struct View<'e> {
+    pub(crate) view: Box<dyn AnyView>,
+    pub(crate) nodes: Nodes<'e>,
+    pub(crate) state: Option<ValueExpr>,
+}
+
+#[derive(Debug)]
 pub(crate) enum NodeKind<'e> {
     Single(Single<'e>),
     Loop(LoopNode<'e>),
     ControlFlow(IfElse<'e>),
-    View(Box<dyn AnyView>, Nodes<'e>),
+    View(View<'e>),
 }
 
 // impl fmt::Debug for NodeKind<'_> {
@@ -226,7 +233,7 @@ impl<'expr> Nodes<'expr> {
             }) => Box::new(std::iter::once(&node.node_id).chain(children.node_ids())),
             NodeKind::Loop(loop_state) => loop_state.node_ids(),
             NodeKind::ControlFlow(control_flow) => control_flow.node_ids(),
-            NodeKind::View(_, nodes) => Box::new(nodes.node_ids()),
+            NodeKind::View(View { nodes, .. }) => Box::new(nodes.node_ids()),
         })
     }
 
@@ -241,7 +248,7 @@ impl<'expr> Nodes<'expr> {
                     }) => Box::new(once((widget, children))),
                     NodeKind::Loop(loop_state) => Box::new(loop_state.iter_mut()),
                     NodeKind::ControlFlow(control_flow) => Box::new(control_flow.iter_mut()),
-                    NodeKind::View(_, nodes) => Box::new(nodes.iter_mut()),
+                    NodeKind::View(View { nodes, .. }) => Box::new(nodes.iter_mut()),
                 }
             },
         )
@@ -258,7 +265,7 @@ fn count<'a>(nodes: impl Iterator<Item = &'a Node<'a>>) -> usize {
             NodeKind::Single(Single { children, .. }) => 1 + children.count(),
             NodeKind::Loop(loop_state) => loop_state.count(),
             NodeKind::ControlFlow(if_else) => if_else.count(),
-            NodeKind::View(_, nodes) => nodes.count(),
+            NodeKind::View(View { nodes, .. }) => nodes.count(),
         })
         .sum()
 }
@@ -282,7 +289,7 @@ fn update(nodes: &mut [Node<'_>], node_id: &[usize], change: &Change, context: &
                 }
                 NodeKind::Loop(loop_node) => return loop_node.update(node_id, change, &context),
                 NodeKind::ControlFlow(if_else) => return if_else.update(node_id, change, &context),
-                NodeKind::View(_, nodes) => return nodes.update(node_id, change, &context),
+                NodeKind::View(View { nodes, .. }) => return nodes.update(node_id, change, &context),
             }
         }
     }

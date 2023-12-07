@@ -14,3 +14,4 @@ bitflags = { workspace = true }
 unicode-width = { workspace = true }
 thiserror = { workspace = true }
 parking_lot = { workspace = true }
+kempt = "0.2.2"

@@ -5,7 +5,7 @@ use anathema_values::{
 };
 
 pub use self::controlflow::{ElseExpr, IfExpr};
-use super::nodes::{IfElse, LoopNode, Single};
+use super::nodes::{IfElse, LoopNode, Single, View};
 use crate::error::Result;
 use crate::factory::FactoryContext;
 use crate::generator::nodes::{Node, NodeKind, Nodes};
@@ -200,18 +200,15 @@ pub struct ViewExpr {
 }
 
 impl ViewExpr {
-    fn eval<'e>(
-        &'e self,
-        context: &Context<'_, 'e>,
-        node_id: NodeId,
-    ) -> Result<Node<'e>> {
+    fn eval<'e>(&'e self, context: &Context<'_, 'e>, node_id: NodeId) -> Result<Node<'e>> {
         TabIndex::insert(node_id.clone());
         Views::insert(node_id.clone());
         let node = Node {
-            kind: NodeKind::View(
-                RegisteredViews::get(&self.id)?,
-                Nodes::new(&self.body, node_id.clone()),
-            ),
+            kind: NodeKind::View(View {
+                view: RegisteredViews::get(&self.id)?,
+                nodes: Nodes::new(&self.body, node_id.clone()),
+                state: self.state.clone(),
+            }),
             node_id,
             scope: context.new_scope(),
         };

@@ -7,14 +7,15 @@ use std::fmt::Debug;
 use anathema_values::hashmap::HashMap;
 use anathema_values::NodeId;
 use parking_lot::Mutex;
+use kempt::Set;
 
 use crate::error::{Error, Result};
 
 pub type ViewFn = dyn Fn() -> Box<dyn AnyView> + Send;
 
 static TAB_INDEX: AtomicUsize = AtomicUsize::new(0);
-static TAB_VIEWS: Mutex<BTreeSet<NodeId>> = Mutex::new(BTreeSet::new());
-static VIEWS: Mutex<BTreeSet<NodeId>> = Mutex::new(BTreeSet::new());
+static TAB_VIEWS: Mutex<Set<NodeId>> = Mutex::new(Set::new());
+static VIEWS: Mutex<Set<NodeId>> = Mutex::new(Set::new());
 static REGISTERED_VIEWS: OnceLock<Mutex<HashMap<String, Box<ViewFn>>>> = OnceLock::new();
 
 pub struct RegisteredViews;
@@ -80,6 +81,12 @@ impl TabIndex {
         node_ids.cloned().for_each(|id| {
             views.insert(id);
         });
+    }
+
+    pub fn current() -> Option<NodeId> {
+        let index = TAB_INDEX.load(Ordering::Relaxed);
+        let all = TAB_VIEWS.lock().clone();
+        TAB_VIEWS.lock().member(index).cloned()
     }
 }
 
