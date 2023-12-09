@@ -231,7 +231,7 @@ impl ViewExpr {
         let node = Node {
             kind: NodeKind::View(View {
                 view: RegisteredViews::get(&self.id)?,
-                nodes: Nodes::new(&self.body, node_id.clone()),
+                nodes: Nodes::new(&self.body, node_id.child(0)),
                 state,
             }),
             node_id,

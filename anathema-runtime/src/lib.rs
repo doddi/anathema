@@ -10,17 +10,17 @@ use anathema_widget_core::expressions::Expression;
 use anathema_widget_core::layout::Constraints;
 use anathema_widget_core::nodes::{make_it_so, Node, NodeKind, Nodes};
 use anathema_widget_core::views::{AnyView, RegisteredViews, TabIndex, View, ViewFn, Views};
-use anathema_widget_core::{LayoutNodes, Padding, Pos};
+use anathema_widget_core::{Event, EventProvider, Events, LayoutNodes, Padding, Pos};
 use anathema_widgets::register_default_widgets;
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
-use events::Event;
+// use events::Event;
 
 // use view::View;
 // use self::frame::Frame;
 // pub use self::meta::Meta;
-use crate::events::{EventProvider, Events};
+// use crate::events::{EventProvider, Events};
 
-pub mod events;
+// pub mod events;
 // mod frame;
 // mod meta;
 // mod view;
@@ -172,9 +172,7 @@ where
                         ..
                     }) = self.nodes.query().get(&id)
                     {
-                        let context = Context::root(&self.state);
-                        let state = view.state(&context);
-                        // if let view.on_event(event);
+                        view.on_event(event);
                     }
                 }
             }

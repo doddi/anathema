@@ -16,7 +16,7 @@ use crate::contexts::LayoutCtx;
 use crate::error::Result;
 use crate::expressions::{Expression, ViewState};
 use crate::views::{AnyView, RegisteredViews, TabIndex, Views};
-use crate::WidgetContainer;
+use crate::{Event, WidgetContainer};
 
 mod controlflow;
 mod loops;
@@ -146,17 +146,8 @@ pub struct View<'e> {
 }
 
 impl View<'_> {
-    pub fn state(&mut self, context: &Context<'_, '_>) -> Option<&mut dyn State> {
-        None
-        // match &mut self.state {
-        //     ViewState::RenameMe { path, .. } => match context.state.get(path) {
-        //         ValueRef::Map(state) => 
-        //     },
-        //     // Since static state can never be mutable we can't include that
-        //     // for the events
-        //     ViewState::Static(_) => None,
-        //     ViewState::Empty => None,
-        // }
+    pub fn on_event(&mut self, event: Event) {
+        self.view.on_any_event(event, &mut self.nodes);
     }
 }
 
@@ -328,7 +319,22 @@ fn update(nodes: &mut [Node<'_>], node_id: &[usize], change: &Change, context: &
             }
             NodeKind::Loop(loop_node) => return loop_node.update(node_id, change, &context),
             NodeKind::ControlFlow(if_else) => return if_else.update(node_id, change, &context),
-            NodeKind::View(View { nodes, .. }) => return nodes.update(node_id, change, &context),
+            NodeKind::View(view) => {
+                // TODO: make this into its own function
+                let context = match &view.state {
+                    ViewState::Static(state) => Context::root(*state),
+                    ViewState::External { path, .. } => {
+                        let mut resolver = Resolver::new(&context, Some(&node.node_id));
+                        match resolver.lookup_path(path) {
+                            ValueRef::Map(state) => Context::root(state),
+                            _ => Context::root(&()),
+                        }
+                    }
+                    ViewState::Internal => Context::root(view.view.get_any_state()),
+                };
+
+                return view.nodes.update(node_id, change, &context);
+            }
         }
     }
 }

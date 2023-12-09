@@ -29,7 +29,7 @@ impl ViewTemplates {
         self.dep_list.push(key.into());
 
         let ret = match self.inner.remove(key) {
-            None => panic!("no template, make this an error instead"),
+            None => panic!("no template, make this an error instead: {key}"),
             Some(Template::Pending(src)) => { 
                 let expressions = templates(&src, self)?;
                 self.inner.insert(key.into(), Template::Evaluated(expressions.clone()));

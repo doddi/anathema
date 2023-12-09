@@ -8,6 +8,7 @@ mod style;
 mod values;
 pub mod views;
 mod widget;
+mod event;
 
 #[cfg(feature = "testing")]
 pub mod testing;
@@ -21,3 +22,4 @@ pub use crate::layout::{
 };
 pub use crate::style::WidgetStyle;
 pub use crate::widget::{AnyWidget, Widget, WidgetContainer};
+pub use crate::event::{Event, Events, EventProvider, DefaultEventProvider, DefaultEvents, KeyCode, KeyModifiers};

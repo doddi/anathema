@@ -10,7 +10,7 @@ pub struct Query<'nodes, 'expr, F> {
 }
 
 impl<'nodes, 'expr: 'nodes, F: Filter> Query<'nodes, 'expr, F> {
-    pub fn by_attrib(self, key: &str, value: &str) -> Query<'nodes, 'expr, impl Filter> {
+    pub fn by_attrib(self, key: &str, value: impl Into<ValueExpr>) -> Query<'nodes, 'expr, impl Filter> {
         let filter = ByAttribute(key.into(), value.into());
 
         Query {
@@ -145,7 +145,7 @@ impl<'nodes, 'expr: 'nodes, F: Filter> Query<'nodes, 'expr, F> {
     }
 }
 
-trait Filter {
+pub trait Filter {
     fn filter(&self, node: &Node) -> bool {
         true
     }
@@ -184,6 +184,9 @@ impl Filter for () {}
 
 struct ByAttribute(String, ValueExpr);
 
+// TODO: attributes are not resolved at this point.
+//       Alternatively we can resolve all attributes upon creation, 
+//       and thus having a cached value for lookups
 impl Filter for ByAttribute {
     fn filter(&self, node: &Node) -> bool {
         match &node.kind {
@@ -192,7 +195,7 @@ impl Filter for ByAttribute {
                 .get(&self.0)
                 .map(|a| a.eq(&self.1))
                 .unwrap_or(false),
-            _ => true,
+            _ => false,
         }
     }
 }
@@ -202,8 +205,10 @@ struct ByTag(String);
 impl Filter for ByTag {
     fn filter(&self, node: &Node) -> bool {
         match node.kind {
-            NodeKind::Single(Single { ident, .. }) => ident == self.0,
-            _ => true,
+            NodeKind::Single(Single { ident, .. }) => {
+                ident == self.0
+            }
+            _ => false,
         }
     }
 }

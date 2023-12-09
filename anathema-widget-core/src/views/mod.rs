@@ -9,6 +9,7 @@ use anathema_values::{NodeId, State};
 use parking_lot::Mutex;
 use kempt::Set;
 
+use crate::{Event, Nodes};
 use crate::error::{Error, Result};
 
 pub type ViewFn = dyn Fn() -> Box<dyn AnyView> + Send;
@@ -46,7 +47,7 @@ impl RegisteredViews {
 pub struct TabIndex;
 
 impl TabIndex {
-    fn next(&mut self) {
+    pub fn next() {
         TAB_INDEX.fetch_add(1, Ordering::Relaxed);
 
         let len = TAB_VIEWS.lock().len();
@@ -109,7 +110,8 @@ impl Views {
 pub trait View {
     type State: 'static;
 
-    fn event(&self, event: (), state: &mut Self::State);
+    fn on_event(&mut self, event: Event, nodes: &mut Nodes<'_>) {
+    }
 
     fn make() -> Self;
 
@@ -119,7 +121,7 @@ pub trait View {
 }
 
 pub trait AnyView : Debug {
-    fn any_event(&mut self, ev: (), state: &mut dyn Any) -> ();
+    fn on_any_event(&mut self, ev: Event, nodes: &mut Nodes<'_>);
 
     fn get_any_state(&self) -> &dyn State;
 }
@@ -128,11 +130,8 @@ impl<T> AnyView for T
 where
     T: View + Debug,
 {
-    fn any_event(&mut self, ev: (), state: &mut dyn Any) -> () {
-        if let Some(state) = state.downcast_mut::<T::State>() {
-            self.event(ev, state);
-        }
-        ev
+    fn on_any_event(&mut self, event: Event, nodes: &mut Nodes<'_>) {
+        self.on_event(event, nodes);
     }
 
     fn get_any_state(&self) -> &dyn State {
