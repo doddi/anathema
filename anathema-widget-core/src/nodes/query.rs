@@ -1,16 +1,16 @@
-use anathema_values::ValueExpr;
+use anathema_values::{NodeId, ValueExpr};
 
 use super::{LoopNode, Node, Single, View};
 use crate::nodes::NodeKind;
 use crate::Nodes;
 
-struct Query<'nodes, 'expr, F> {
-    nodes: &'nodes mut Nodes<'expr>,
-    filter: F,
+pub struct Query<'nodes, 'expr, F> {
+    pub(super) nodes: &'nodes mut Nodes<'expr>,
+    pub(super) filter: F,
 }
 
 impl<'nodes, 'expr: 'nodes, F: Filter> Query<'nodes, 'expr, F> {
-    fn by_attrib(self, key: &str, value: &str) -> Query<'nodes, 'expr, impl Filter> {
+    pub fn by_attrib(self, key: &str, value: &str) -> Query<'nodes, 'expr, impl Filter> {
         let filter = ByAttribute(key.into(), value.into());
 
         Query {
@@ -19,7 +19,7 @@ impl<'nodes, 'expr: 'nodes, F: Filter> Query<'nodes, 'expr, F> {
         }
     }
 
-    fn by_tag(self, tag: &str) -> Query<'nodes, 'expr, impl Filter> {
+    pub fn by_tag(self, tag: &str) -> Query<'nodes, 'expr, impl Filter> {
         let filter = ByTag(tag.into());
 
         Query {
@@ -28,7 +28,7 @@ impl<'nodes, 'expr: 'nodes, F: Filter> Query<'nodes, 'expr, F> {
         }
     }
 
-    fn filter<Fun>(self, f: Fun) -> Query<'nodes, 'expr, impl Filter>
+    pub fn filter<Fun>(self, f: Fun) -> Query<'nodes, 'expr, impl Filter>
     where
         Fun: Fn(&Node) -> bool,
     {
@@ -48,9 +48,7 @@ impl<'nodes, 'expr: 'nodes, F: Filter> Query<'nodes, 'expr, F> {
             }
 
             match &mut node.kind {
-                NodeKind::Single(Single { children, .. }) => {
-                    Self::remove_nodes(filter, children)
-                }
+                NodeKind::Single(Single { children, .. }) => Self::remove_nodes(filter, children),
                 NodeKind::View(View { nodes, .. }) => Self::remove_nodes(filter, nodes),
                 NodeKind::Loop(LoopNode { iterations, .. }) => {
                     for iteration in iterations {
@@ -81,7 +79,9 @@ impl<'nodes, 'expr: 'nodes, F: Filter> Query<'nodes, 'expr, F> {
             }
 
             match &mut node.kind {
-                NodeKind::Single(Single { children, .. }) => Self::for_each_nodes(filter, children, fun),
+                NodeKind::Single(Single { children, .. }) => {
+                    Self::for_each_nodes(filter, children, fun)
+                }
                 NodeKind::View(View { nodes, .. }) => Self::for_each_nodes(filter, nodes, fun),
                 NodeKind::Loop(LoopNode { iterations, .. }) => {
                     for iteration in iterations {
@@ -94,19 +94,42 @@ impl<'nodes, 'expr: 'nodes, F: Filter> Query<'nodes, 'expr, F> {
                     }
                 }
             }
-
         }
     }
 
-    fn remove(self) {
+    pub fn remove(self) {
         Self::remove_nodes(&self.filter, self.nodes);
     }
 
-    fn for_each<Fun>(self, mut fun: Fun)
+    pub fn for_each<Fun>(self, mut fun: Fun)
     where
         Fun: FnMut(&mut Node),
     {
         Self::for_each_nodes(&self.filter, self.nodes, &mut fun);
+    }
+
+    pub fn get(&mut self, node_id: &NodeId) -> Option<&mut Node<'expr>> {
+        for node in &mut self.nodes.inner {
+            // // if !node.node_id.contains(node_id.0) {
+            // //     continue
+            // // }
+            // // Found the node to update
+            // if node.node_id.eq(node_id) {
+            //     return Some(node);
+            // }
+
+            // match &mut node.kind {
+            //     NodeKind::Single(Single { children, .. }) => {
+            //         return children.update(&node_id, change, &context)
+            //     }
+            //     NodeKind::Loop(loop_node) => return loop_node.update(node_id, change, &context),
+            //     NodeKind::ControlFlow(if_else) => return if_else.update(node_id, change, &context),
+            //     NodeKind::View(View { nodes, .. }) => {
+            //         return nodes.update(node_id, change, &context)
+            //     }
+            // }
+        }
+        None
     }
 }
 

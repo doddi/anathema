@@ -71,7 +71,6 @@ impl<'e> LoopNode<'e> {
                 return Ok(ControlFlow::Continue(()));
             };
 
-            let v = format!("{value:?}");
             let scope = LocalScope::new(self.binding.clone(), value);
             let context = context.reparent(&scope);
 
@@ -116,7 +115,6 @@ impl<'e> LoopNode<'e> {
             Collection::State { len, .. } if len == self.value_index => return None,
             Collection::State { ref path, .. } => {
                 let path = path.compose(self.value_index);
-                let p = path.to_string();
                 self.value_index += 1;
                 ValueRef::Deferred(path)
             }

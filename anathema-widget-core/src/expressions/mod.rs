@@ -1,4 +1,5 @@
 use anathema_render::Size;
+use anathema_values::hashmap::HashMap;
 use anathema_values::{
     Attributes, Context, Deferred, DynValue, NodeId, Path, Resolver, State, Value, ValueExpr,
     ValueRef, ValueResolver,
@@ -22,14 +23,14 @@ struct DoesEverything {
 //   - A single Node -
 // -----------------------------------------------------------------------------
 #[derive(Debug, Clone)]
-pub struct SingleNode {
+pub struct SingleNodeExpr {
     pub ident: String,
     pub text: Option<ValueExpr>,
     pub attributes: Attributes,
     pub children: Vec<Expression>,
 }
 
-impl SingleNode {
+impl SingleNodeExpr {
     fn eval<'e>(&'e self, context: &Context<'_, 'e>, node_id: NodeId) -> Result<Node<'e>> {
         // TODO: add > < >= <=, this message is not really about single nodes, but about evaluating
         // values, however this message was attached to another message so here we are... (the
@@ -192,6 +193,13 @@ impl ControlFlow {
     }
 }
 
+#[derive(Debug)]
+pub(crate) enum ViewState<'e> {
+    Static(&'e dyn State),
+    RenameMe { path: Path, expr: ValueExpr },
+    Empty,
+}
+
 #[derive(Debug, Clone)]
 pub struct ViewExpr {
     pub id: String,
@@ -203,11 +211,28 @@ impl ViewExpr {
     fn eval<'e>(&'e self, context: &Context<'_, 'e>, node_id: NodeId) -> Result<Node<'e>> {
         TabIndex::insert(node_id.clone());
         Views::insert(node_id.clone());
+
+        let state = match &self.state {
+            Some(expr) => {
+                let mut resolver = Deferred::new(context);
+                let val = resolver.resolve(expr);
+                match val {
+                    ValueRef::Map(state) => ViewState::Static(state),
+                    ValueRef::Deferred(path) => ViewState::RenameMe {
+                        path,
+                        expr: expr.clone(),
+                    },
+                    _ => ViewState::Empty,
+                }
+            }
+            None => ViewState::Empty,
+        };
+
         let node = Node {
             kind: NodeKind::View(View {
                 view: RegisteredViews::get(&self.id)?,
                 nodes: Nodes::new(&self.body, node_id.clone()),
-                state: self.state.clone(),
+                state,
             }),
             node_id,
             scope: context.new_scope(),
@@ -221,7 +246,7 @@ impl ViewExpr {
 // -----------------------------------------------------------------------------
 #[derive(Debug, Clone)]
 pub enum Expression {
-    Node(SingleNode),
+    Node(SingleNodeExpr),
     View(ViewExpr),
     Loop(LoopExpr),
     ControlFlow(ControlFlow),

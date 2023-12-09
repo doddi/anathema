@@ -80,14 +80,14 @@ impl<'a, 'expr> ValueResolver<'expr> for Deferred<'a, 'expr> {
 //   - Resolver -
 // -----------------------------------------------------------------------------
 /// Resolve the expression, including deferred values.
-pub struct Resolver<'ctx, 'state, 'expr> {
-    context: &'ctx Context<'state, 'expr>,
+pub struct Resolver<'ctx, 'state> {
+    context: &'ctx Context<'state, 'state>,
     node_id: Option<&'state NodeId>,
     is_deferred: bool,
 }
 
-impl<'ctx, 'state, 'expr> Resolver<'ctx, 'state, 'expr> {
-    pub fn new(context: &'ctx Context<'state, 'expr>, node_id: Option<&'state NodeId>) -> Self {
+impl<'ctx, 'state> Resolver<'ctx, 'state> {
+    pub fn new(context: &'ctx Context<'state, 'state>, node_id: Option<&'state NodeId>) -> Self {
         Self {
             context,
             node_id,
@@ -96,8 +96,8 @@ impl<'ctx, 'state, 'expr> Resolver<'ctx, 'state, 'expr> {
     }
 }
 
-impl<'state, 'expr> Resolver<'_, 'state, 'expr> {
-    pub fn resolve(&mut self, value: &'expr ValueExpr) -> ValueRef<'state> {
+impl<'state> Resolver<'_, 'state> {
+    pub fn resolve(&mut self, value: &'state ValueExpr) -> ValueRef<'state> {
         match value.eval(self) {
             ValueRef::Deferred(path) => {
                 self.is_deferred = true;
@@ -111,7 +111,7 @@ impl<'state, 'expr> Resolver<'_, 'state, 'expr> {
         self.is_deferred
     }
 
-    pub fn resolve_string(&mut self, value: &'expr ValueExpr) -> Option<String> {
+    pub fn resolve_string(&mut self, value: &'state ValueExpr) -> Option<String> {
         match value.eval(self) {
             ValueRef::Str(s) => Some(s.into()),
             ValueRef::Owned(s) => Some(s.to_string()),
@@ -141,13 +141,14 @@ impl<'state, 'expr> Resolver<'_, 'state, 'expr> {
                     }
                 }
             }
+            ValueRef::Empty => None,
 
-            //     // TODO: probably shouldn't panic here, but we'll do it while working on this
-            _ => panic!(),
+            // TODO: probably shouldn't panic here, but we'll do it while working on this
+            v => panic!("{v:?}"),
         }
     }
 
-    pub fn resolve_list<T>(&mut self, value: &'expr ValueExpr) -> SmallVec<[T; 4]>
+    pub fn resolve_list<T>(&mut self, value: &'state ValueExpr) -> SmallVec<[T; 4]>
     where
         T: for<'b> TryFrom<ValueRef<'b>>,
     {
@@ -187,8 +188,8 @@ impl<'state, 'expr> Resolver<'_, 'state, 'expr> {
     }
 }
 
-impl<'state, 'expr> ValueResolver<'expr> for Resolver<'_, 'state, 'expr> {
-    fn resolve_number(&mut self, value: &'expr ValueExpr) -> Option<Num> {
+impl<'state> ValueResolver<'state> for Resolver<'_, 'state> {
+    fn resolve_number(&mut self, value: &'state ValueExpr) -> Option<Num> {
         match value.eval(self) {
             ValueRef::Owned(Owned::Num(num)) => Some(num),
             ValueRef::Deferred(path) => {
@@ -202,10 +203,9 @@ impl<'state, 'expr> ValueResolver<'expr> for Resolver<'_, 'state, 'expr> {
         }
     }
 
-    fn resolve_bool(&mut self, value: &'expr ValueExpr) -> bool {
+    fn resolve_bool(&mut self, value: &'state ValueExpr) -> bool {
         match value.eval(self) {
             ValueRef::Deferred(path) => {
-                let val = self.lookup_path(&path);
                 self.is_deferred = true;
                 self.context.state.get(&path, self.node_id).is_true()
             }
@@ -213,7 +213,7 @@ impl<'state, 'expr> ValueResolver<'expr> for Resolver<'_, 'state, 'expr> {
         }
     }
 
-    fn resolve_path(&mut self, value: &'expr ValueExpr) -> Option<Path> {
+    fn resolve_path(&mut self, value: &'state ValueExpr) -> Option<Path> {
         match value {
             ValueExpr::Ident(path) => {
                 let path = Path::from(&**path);
@@ -240,11 +240,11 @@ impl<'state, 'expr> ValueResolver<'expr> for Resolver<'_, 'state, 'expr> {
         }
     }
 
-    fn lookup_path(&mut self, path: &Path) -> ValueRef<'expr> {
+    fn lookup_path(&mut self, path: &Path) -> ValueRef<'state> {
         match self.context.scopes.lookup(path) {
             ValueRef::Empty => {
                 self.is_deferred = true;
-                ValueRef::Deferred(path.clone())
+                self.context.state.get(&path, self.node_id)
             }
             val => val,
         }
@@ -270,6 +270,7 @@ pub enum ValueExpr {
     Dot(Box<ValueExpr>, Box<ValueExpr>),
     Index(Box<ValueExpr>, Box<ValueExpr>),
 
+    // TODO: does the list and the hashmap even need to be RCd?
     List(Rc<[ValueExpr]>),
     Map(Rc<HashMap<String, ValueExpr>>),
 

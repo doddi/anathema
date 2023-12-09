@@ -2,7 +2,7 @@ use anathema_values::testing::ident;
 use anathema_values::{Attributes, Path, ValueExpr};
 
 use crate::expressions::{
-    ControlFlow, ElseExpr, Expression, IfExpr, LoopExpr, SingleNode, ViewExpr,
+    ControlFlow, ElseExpr, Expression, IfExpr, LoopExpr, SingleNodeExpr, ViewExpr,
 };
 
 pub fn view(name: &str, body: impl Into<Vec<Expression>>) -> Expression {
@@ -17,7 +17,7 @@ pub fn expression(
     children: impl Into<Vec<Expression>>,
 ) -> Expression {
     let children = children.into();
-    Expression::Node(SingleNode {
+    Expression::Node(SingleNodeExpr {
         ident: ident.into(),
         text: text.into(),
         attributes: Attributes::from_iter(attributes),

@@ -59,6 +59,7 @@ impl<'a, 'expr> Scopes<'a, 'expr> {
     }
 }
 
+#[derive(Debug)]
 pub struct Context<'state, 'expr> {
     pub state: &'state dyn State,
     pub scopes: Scopes<'state, 'expr>,

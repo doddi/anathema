@@ -5,13 +5,14 @@ use std::fmt;
 use std::iter::once;
 use std::ops::ControlFlow;
 
-use anathema_values::{Change, Context, LocalScope, NodeId, Resolver, State, ValueExpr, ValueRef};
+use anathema_values::{Change, Context, LocalScope, NodeId, Resolver, State, ValueExpr, ValueRef, ValueResolver};
 
 pub(crate) use self::controlflow::IfElse;
 pub(crate) use self::loops::LoopNode;
+use self::query::Query;
 use crate::contexts::LayoutCtx;
 use crate::error::Result;
-use crate::expressions::Expression;
+use crate::expressions::{Expression, ViewState};
 use crate::views::{AnyView, RegisteredViews, TabIndex, Views};
 use crate::WidgetContainer;
 
@@ -58,8 +59,21 @@ impl<'e> Node<'e> {
 
                 Ok(ControlFlow::Continue(()))
             }
-            NodeKind::View(View { nodes, .. }) => {
-                while let Ok(res) = nodes.next(context, f) {
+            NodeKind::View(View { nodes, state, .. }) => {
+                let context = match state {
+                    ViewState::Static(state) => Context::root(*state),
+                    ViewState::RenameMe { path, .. } => {
+                        let x = format!("{:?}", path);
+                        let mut resolver = Resolver::new(context, Some(&self.node_id));
+                        match resolver.lookup_path(path) {
+                            ValueRef::Map(state) => Context::root(state),
+                            _ => Context::root(&()),
+                        }
+                    }
+                    ViewState::Empty => Context::root(&()),
+                };
+
+                while let Ok(res) = nodes.next(&context, f) {
                     match res {
                         ControlFlow::Continue(()) => continue,
                         ControlFlow::Break(()) => break,
@@ -107,7 +121,9 @@ impl<'e> Node<'e> {
 impl<'e> Node<'e> {
     pub(crate) fn single(&mut self) -> (&mut WidgetContainer<'e>, &mut Nodes<'e>) {
         match &mut self.kind {
-            NodeKind::Single(Single { widget, children, .. }) => (widget, children),
+            NodeKind::Single(Single {
+                widget, children, ..
+            }) => (widget, children),
             _ => panic!(),
         }
     }
@@ -124,7 +140,7 @@ pub(crate) struct Single<'e> {
 pub(crate) struct View<'e> {
     pub(crate) view: Box<dyn AnyView>,
     pub(crate) nodes: Nodes<'e>,
-    pub(crate) state: Option<ValueExpr>,
+    pub(crate) state: ViewState<'e>,
 }
 
 #[derive(Debug)]
@@ -235,6 +251,13 @@ impl<'expr> Nodes<'expr> {
         }
     }
 
+    pub fn query(&mut self) -> Query<'_, 'expr, ()> {
+        Query {
+            nodes: self,
+            filter: (),
+        }
+    }
+
     fn node_ids(&self) -> impl Iterator<Item = &NodeId> + '_ {
         self.inner.iter().flat_map(|node| match &node.kind {
             NodeKind::Single(Single {
@@ -282,26 +305,24 @@ fn count<'a>(nodes: impl Iterator<Item = &'a Node<'a>>) -> usize {
 // Apply change / update to relevant nodes
 fn update(nodes: &mut [Node<'_>], node_id: &[usize], change: &Change, context: &Context<'_, '_>) {
     for node in nodes {
-        if node.node_id.contains(node_id) {
-            // Found the node to update
-            if node.node_id.eq(node_id) {
-                node.update(change, context);
-                return;
-            }
+        if !node.node_id.contains(node_id) {
+            continue;
+        }
+        // Found the node to update
+        if node.node_id.eq(node_id) {
+            return node.update(change, context);
+        }
 
-            let scope = &node.scope;
-            let context = context.reparent(scope);
+        let scope = &node.scope;
+        let context = context.reparent(scope);
 
-            match &mut node.kind {
-                NodeKind::Single(Single { children, .. }) => {
-                    return children.update(&node_id, change, &context)
-                }
-                NodeKind::Loop(loop_node) => return loop_node.update(node_id, change, &context),
-                NodeKind::ControlFlow(if_else) => return if_else.update(node_id, change, &context),
-                NodeKind::View(View { nodes, .. }) => {
-                    return nodes.update(node_id, change, &context)
-                }
+        match &mut node.kind {
+            NodeKind::Single(Single { children, .. }) => {
+                return children.update(&node_id, change, &context)
             }
+            NodeKind::Loop(loop_node) => return loop_node.update(node_id, change, &context),
+            NodeKind::ControlFlow(if_else) => return if_else.update(node_id, change, &context),
+            NodeKind::View(View { nodes, .. }) => return nodes.update(node_id, change, &context),
         }
     }
 }

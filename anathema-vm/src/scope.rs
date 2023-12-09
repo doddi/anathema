@@ -1,7 +1,7 @@
 use anathema_compiler::{Constants, Instruction, StringId};
 use anathema_values::{Attributes, ValueExpr};
 use anathema_widget_core::expressions::{
-    ControlFlow, ElseExpr, Expression, IfExpr, LoopExpr, SingleNode, ViewExpr,
+    ControlFlow, ElseExpr, Expression, IfExpr, LoopExpr, SingleNodeExpr, ViewExpr,
 };
 
 use crate::{error::Result, ViewTemplates};
@@ -132,7 +132,7 @@ impl<'vm> Scope<'vm> {
         let scope = self.instructions.drain(..scope_size).collect();
         let children = Scope::new(scope, &self.consts).exec(views)?;
 
-        let node = Expression::Node(SingleNode {
+        let node = Expression::Node(SingleNodeExpr {
             ident: ident.to_string(),
             text,
             attributes,
