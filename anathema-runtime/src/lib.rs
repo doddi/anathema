@@ -8,7 +8,7 @@ use anathema_widget_core::contexts::{LayoutCtx, PaintCtx};
 use anathema_widget_core::error::Result;
 use anathema_widget_core::expressions::Expression;
 use anathema_widget_core::layout::Constraints;
-use anathema_widget_core::nodes::{make_it_so, Nodes};
+use anathema_widget_core::nodes::{make_it_so, Node, NodeKind, Nodes};
 use anathema_widget_core::views::{AnyView, RegisteredViews, TabIndex, View, ViewFn, Views};
 use anathema_widget_core::{LayoutNodes, Padding, Pos};
 use anathema_widgets::register_default_widgets;
@@ -96,8 +96,6 @@ where
             Ok(())
         })?;
 
-        // panic!("{:#?}", self.nodes);
-
         Ok(())
     }
 
@@ -169,9 +167,15 @@ where
                 }
 
                 if let Some(id) = TabIndex::current() {
-                    // if let Some(Node { kind: NodeKind::View(view), .. }) = self.nodes.query().get(id) {
-                    // if let view.on_event(event);
-                    // }
+                    if let Some(Node {
+                        kind: NodeKind::View(view),
+                        ..
+                    }) = self.nodes.query().get(&id)
+                    {
+                        let context = Context::root(&self.state);
+                        let state = view.state(&context);
+                        // if let view.on_event(event);
+                    }
                 }
             }
 

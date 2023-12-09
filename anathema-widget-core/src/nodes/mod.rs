@@ -5,7 +5,9 @@ use std::fmt;
 use std::iter::once;
 use std::ops::ControlFlow;
 
-use anathema_values::{Change, Context, LocalScope, NodeId, Resolver, State, ValueExpr, ValueRef, ValueResolver};
+use anathema_values::{
+    Change, Context, LocalScope, NodeId, Resolver, State, ValueExpr, ValueRef, ValueResolver,
+};
 
 pub(crate) use self::controlflow::IfElse;
 pub(crate) use self::loops::LoopNode;
@@ -28,11 +30,12 @@ pub fn make_it_so(expressions: &[crate::expressions::Expression]) -> Nodes<'_> {
 #[derive(Debug)]
 pub struct Node<'e> {
     pub node_id: NodeId,
-    pub(crate) kind: NodeKind<'e>,
+    pub kind: NodeKind<'e>,
     pub(crate) scope: LocalScope<'e>,
 }
 
 impl<'e> Node<'e> {
+    // TODO: this is a very chunky match statement. Let's make it nice!
     pub fn next<F>(&mut self, context: &Context<'_, 'e>, f: &mut F) -> Result<ControlFlow<(), ()>>
     where
         F: FnMut(&mut WidgetContainer<'e>, &mut Nodes<'e>, &Context<'_, 'e>) -> Result<()>,
@@ -59,18 +62,17 @@ impl<'e> Node<'e> {
 
                 Ok(ControlFlow::Continue(()))
             }
-            NodeKind::View(View { nodes, state, .. }) => {
+            NodeKind::View(View { nodes, state, view }) => {
                 let context = match state {
                     ViewState::Static(state) => Context::root(*state),
-                    ViewState::RenameMe { path, .. } => {
-                        let x = format!("{:?}", path);
+                    ViewState::External { path, .. } => {
                         let mut resolver = Resolver::new(context, Some(&self.node_id));
                         match resolver.lookup_path(path) {
                             ValueRef::Map(state) => Context::root(state),
                             _ => Context::root(&()),
                         }
                     }
-                    ViewState::Empty => Context::root(&()),
+                    ViewState::Internal => Context::root(view.get_any_state()),
                 };
 
                 while let Ok(res) = nodes.next(&context, f) {
@@ -137,30 +139,34 @@ pub(crate) struct Single<'e> {
 }
 
 #[derive(Debug)]
-pub(crate) struct View<'e> {
+pub struct View<'e> {
     pub(crate) view: Box<dyn AnyView>,
     pub(crate) nodes: Nodes<'e>,
     pub(crate) state: ViewState<'e>,
 }
 
+impl View<'_> {
+    pub fn state(&mut self, context: &Context<'_, '_>) -> Option<&mut dyn State> {
+        None
+        // match &mut self.state {
+        //     ViewState::RenameMe { path, .. } => match context.state.get(path) {
+        //         ValueRef::Map(state) => 
+        //     },
+        //     // Since static state can never be mutable we can't include that
+        //     // for the events
+        //     ViewState::Static(_) => None,
+        //     ViewState::Empty => None,
+        // }
+    }
+}
+
 #[derive(Debug)]
-pub(crate) enum NodeKind<'e> {
+pub enum NodeKind<'e> {
     Single(Single<'e>),
     Loop(LoopNode<'e>),
     ControlFlow(IfElse<'e>),
     View(View<'e>),
 }
-
-// impl fmt::Debug for NodeKind<'_> {
-//     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-//         match self {
-//             Self::Single(s) => write!(f, "Single<{s:?}>"),
-//             Self::Loop(l) => write!(f, "Loop<{l:?}>"),
-//             Self::ControlFlow(if_else) => write!(f, "If/Else<{if_else:?}>"),
-//             Self::View(_, n) => write!(f, "<View>"),
-//         }
-//     }
-// }
 
 #[derive(Debug)]
 // TODO: possibly optimise this by making nodes optional on the node

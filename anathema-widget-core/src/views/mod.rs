@@ -5,7 +5,7 @@ use std::sync::{Arc, OnceLock};
 use std::fmt::Debug;
 
 use anathema_values::hashmap::HashMap;
-use anathema_values::NodeId;
+use anathema_values::{NodeId, State};
 use parking_lot::Mutex;
 use kempt::Set;
 
@@ -112,10 +112,16 @@ pub trait View {
     fn event(&self, event: (), state: &mut Self::State);
 
     fn make() -> Self;
+
+    fn get_state(&self) -> &dyn State {
+        &()
+    }
 }
 
 pub trait AnyView : Debug {
     fn any_event(&mut self, ev: (), state: &mut dyn Any) -> ();
+
+    fn get_any_state(&self) -> &dyn State;
 }
 
 impl<T> AnyView for T
@@ -127,6 +133,10 @@ where
             self.event(ev, state);
         }
         ev
+    }
+
+    fn get_any_state(&self) -> &dyn State {
+        self.get_state()
     }
 }
 

@@ -196,8 +196,8 @@ impl ControlFlow {
 #[derive(Debug)]
 pub(crate) enum ViewState<'e> {
     Static(&'e dyn State),
-    RenameMe { path: Path, expr: ValueExpr },
-    Empty,
+    External { path: Path, expr: ValueExpr },
+    Internal,
 }
 
 #[derive(Debug, Clone)]
@@ -218,14 +218,14 @@ impl ViewExpr {
                 let val = resolver.resolve(expr);
                 match val {
                     ValueRef::Map(state) => ViewState::Static(state),
-                    ValueRef::Deferred(path) => ViewState::RenameMe {
+                    ValueRef::Deferred(path) => ViewState::External {
                         path,
                         expr: expr.clone(),
                     },
-                    _ => ViewState::Empty,
+                    _ => ViewState::Internal,
                 }
             }
-            None => ViewState::Empty,
+            None => ViewState::Internal,
         };
 
         let node = Node {

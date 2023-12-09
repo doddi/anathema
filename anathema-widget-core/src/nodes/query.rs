@@ -108,28 +108,40 @@ impl<'nodes, 'expr: 'nodes, F: Filter> Query<'nodes, 'expr, F> {
         Self::for_each_nodes(&self.filter, self.nodes, &mut fun);
     }
 
-    pub fn get(&mut self, node_id: &NodeId) -> Option<&mut Node<'expr>> {
-        for node in &mut self.nodes.inner {
-            // // if !node.node_id.contains(node_id.0) {
-            // //     continue
-            // // }
-            // // Found the node to update
-            // if node.node_id.eq(node_id) {
-            //     return Some(node);
-            // }
+    fn get_node<'a>(node_id: &NodeId, nodes: &'a mut Nodes<'expr>) -> Option<&'a mut Node<'expr>> {
+        for node in &mut nodes.inner {
+            // Found the node
+            if node.node_id.eq(node_id) {
+                return Some(node);
+            }
 
-            // match &mut node.kind {
-            //     NodeKind::Single(Single { children, .. }) => {
-            //         return children.update(&node_id, change, &context)
-            //     }
-            //     NodeKind::Loop(loop_node) => return loop_node.update(node_id, change, &context),
-            //     NodeKind::ControlFlow(if_else) => return if_else.update(node_id, change, &context),
-            //     NodeKind::View(View { nodes, .. }) => {
-            //         return nodes.update(node_id, change, &context)
-            //     }
-            // }
+            if !node.node_id.contains(&node_id.0) {
+                continue
+            }
+
+            return match &mut node.kind {
+                NodeKind::Single(Single { children, .. }) => Self::get_node(node_id, children),
+                NodeKind::View(View { nodes, .. }) => Self::get_node(node_id, nodes),
+                NodeKind::ControlFlow(if_else) => {
+                    let nodes = if_else.body_mut()?;
+                    Self::get_node(node_id, nodes)
+                }
+                NodeKind::Loop(LoopNode { iterations, .. }) => {
+                    for iteration in iterations {
+                        if let node @ Some(_) = Self::get_node(node_id, &mut iteration.body) {
+                            return node;
+                        }
+                    }
+                    None
+                }
+            }
         }
+
         None
+    }
+
+    pub fn get(&mut self, node_id: &NodeId) -> Option<&mut Node<'expr>> {
+        Self::get_node(node_id, &mut self.nodes)
     }
 }
 
