@@ -30,4 +30,8 @@ pub enum Error {
     /// Unregistered view
     #[error("unregistered view")]
     ViewNotFound,
+
+    /// Only one instance of this view can exist
+    #[error("this view has already been consumed")]
+    ViewConsumed,
 }

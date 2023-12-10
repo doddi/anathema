@@ -3,7 +3,8 @@ mod scope;
 mod vm;
 
 use anathema_values::hashmap::HashMap;
-use anathema_widget_core::{expressions::Expression, views::{View, RegisteredViews}};
+use anathema_widget_core::expressions::Expression;
+use anathema_widget_core::views::{RegisteredViews, View, AnyView};
 pub use vm::VirtualMachine;
 
 use self::error::Result;
@@ -25,19 +26,21 @@ impl ViewTemplates {
         if self.dep_list.iter().any(|s| s == key) {
             panic!("cyclic dependency");
         }
-        
+
         self.dep_list.push(key.into());
 
         let ret = match self.inner.remove(key) {
             None => panic!("no template, make this an error instead: {key}"),
-            Some(Template::Pending(src)) => { 
+            Some(Template::Pending(src)) => {
                 let expressions = templates(&src, self)?;
-                self.inner.insert(key.into(), Template::Evaluated(expressions.clone()));
+                self.inner
+                    .insert(key.into(), Template::Evaluated(expressions.clone()));
                 Ok(expressions)
             }
             Some(Template::Evaluated(expressions)) => {
                 let e = expressions.clone();
-                self.inner.insert(key.into(), Template::Evaluated(expressions));
+                self.inner
+                    .insert(key.into(), Template::Evaluated(expressions));
                 Ok(e)
             }
         };
@@ -73,13 +76,18 @@ impl Templates {
         Ok(())
     }
 
-    pub fn add_view<F, T>(&mut self, ident: String, template: String, f: F) 
+    pub fn add_view(&mut self, ident: String, template: String, view: impl AnyView + 'static) {
+        self.view_templates.insert(ident.clone(), template);
+        RegisteredViews::add_view(ident, view)
+    }
+
+    pub fn add_prototype<F, T>(&mut self, ident: String, template: String, f: F)
     where
         F: Send + 'static + Fn() -> T,
-        T: 'static + View + std::fmt::Debug,
+        T: 'static + View + std::fmt::Debug + Send,
     {
         self.view_templates.insert(ident.clone(), template);
-        RegisteredViews::add(ident, f)
+        RegisteredViews::add_prototype(ident, f)
     }
 
     pub fn expressions(&self) -> &[Expression] {

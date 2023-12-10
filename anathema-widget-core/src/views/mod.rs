@@ -14,32 +14,53 @@ use crate::error::{Error, Result};
 
 pub type ViewFn = dyn Fn() -> Box<dyn AnyView> + Send;
 
+enum ViewFactory {
+    View(Option<Box<dyn AnyView>>),
+    Prototype(Box<ViewFn>)
+}
+
 static TAB_INDEX: AtomicUsize = AtomicUsize::new(0);
 static TAB_VIEWS: Mutex<Set<NodeId>> = Mutex::new(Set::new());
 static VIEWS: Mutex<Set<NodeId>> = Mutex::new(Set::new());
-static REGISTERED_VIEWS: OnceLock<Mutex<HashMap<String, Box<ViewFn>>>> = OnceLock::new();
+static REGISTERED_VIEWS: OnceLock<Mutex<HashMap<String, ViewFactory>>> = OnceLock::new();
 
 pub struct RegisteredViews;
 
 impl RegisteredViews {
-    pub fn add<T, F>(key: String, f: F)
+    pub fn add_view(key: String, view: impl AnyView + 'static) {
+        Self::add(key, ViewFactory::View(Some(Box::new(view))));
+    }
+
+    pub fn add_prototype<T, F>(key: String, f: F)
     where
         F: Send + 'static + Fn() -> T,
-        T: 'static + View + Debug,
+        T: 'static + View + Debug + Send,
     {
+        Self::add(key, ViewFactory::Prototype(Box::new(move || Box::new(f()))));
+    }
+
+    fn add(key: String, view: ViewFactory) {
         REGISTERED_VIEWS
             .get_or_init(Default::default)
             .lock()
-            .insert(key, Box::new(move || Box::new(f())));
+            .insert(key, view);
     }
 
+
     pub fn get(id: &str) -> Result<Box<dyn AnyView>> {
-        let views = REGISTERED_VIEWS.get_or_init(Default::default).lock();
-        let view = views.get(id);
+        let mut views = REGISTERED_VIEWS.get_or_init(Default::default).lock();
+        let view = views.get_mut(id);
 
         match view {
             None => Err(Error::ViewNotFound),
-            Some(f) => Ok(f()),
+            // Some(f) => Ok(f()),
+            Some(ViewFactory::Prototype(prototype)) => Ok(prototype()),
+            Some(ViewFactory::View(view)) => {
+                match view.take() {
+                    Some(view) => Ok(view),
+                    None => Err(Error::ViewConsumed),
+                }
+            }
         }
     }
 }
@@ -129,8 +150,6 @@ pub trait View {
     fn on_event(&mut self, event: Event, nodes: &mut Nodes<'_>) {
     }
 
-    fn make() -> Self;
-
     fn get_state(&self) -> &dyn State {
         &()
     }
@@ -145,7 +164,7 @@ pub trait View {
     }
 }
 
-pub trait AnyView : Debug {
+pub trait AnyView : Debug + Send {
     fn on_any_event(&mut self, ev: Event, nodes: &mut Nodes<'_>);
 
     fn get_any_state(&self) -> &dyn State;
@@ -159,7 +178,7 @@ pub trait AnyView : Debug {
 
 impl<T> AnyView for T
 where
-    T: View + Debug,
+    T: View + Debug + Send,
 {
     fn on_any_event(&mut self, event: Event, nodes: &mut Nodes<'_>) {
         self.on_event(event, nodes);

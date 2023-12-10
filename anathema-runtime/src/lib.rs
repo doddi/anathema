@@ -234,12 +234,4 @@ impl<'e> Runtime<'e> {
             now = Instant::now();
         }
     }
-
-    pub fn register_view<F, T>(&self, id: &str, view: F)
-    where
-        F: Send + 'static + Fn() -> T,
-        T: 'static + View + std::fmt::Debug,
-    {
-        RegisteredViews::add(id.to_string(), view)
-    }
 }
