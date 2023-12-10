@@ -57,6 +57,16 @@ impl TabIndex {
         }
     }
 
+    pub fn prev() {
+        TAB_INDEX.fetch_sub(1, Ordering::Relaxed);
+
+        let len = TAB_VIEWS.lock().len();
+
+        if TAB_INDEX.load(Ordering::Relaxed) == 0 {
+            TAB_INDEX.store(len - 1, Ordering::Relaxed);
+        }
+    }
+
     pub(crate) fn insert(node_id: NodeId) {
         TAB_VIEWS
             .lock()
@@ -98,6 +108,12 @@ impl Views {
         VIEWS.lock().iter().cloned().collect()
     }
 
+    pub fn for_each<F>(f: F) 
+        where F: FnMut(&NodeId)
+    {
+        VIEWS.lock().iter().for_each(f);
+    }
+
     pub(crate) fn insert(node_id: NodeId) {
         VIEWS.lock().insert(node_id);
     }
@@ -118,12 +134,27 @@ pub trait View {
     fn get_state(&self) -> &dyn State {
         &()
     }
+
+    fn tick(&mut self) {
+    }
+
+    fn focus(&mut self) {
+    }
+
+    fn blur(&mut self) {
+    }
 }
 
 pub trait AnyView : Debug {
     fn on_any_event(&mut self, ev: Event, nodes: &mut Nodes<'_>);
 
     fn get_any_state(&self) -> &dyn State;
+
+    fn tick_any(&mut self);
+
+    fn focus_any(&mut self);
+
+    fn blur_any(&mut self);
 }
 
 impl<T> AnyView for T
@@ -136,6 +167,18 @@ where
 
     fn get_any_state(&self) -> &dyn State {
         self.get_state()
+    }
+
+    fn tick_any(&mut self) {
+        self.tick();
+    }
+
+    fn blur_any(&mut self) {
+        self.blur();
+    }
+
+    fn focus_any(&mut self) {
+        self.focus();
     }
 }
 

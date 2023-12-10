@@ -1,5 +1,5 @@
 use std::io::{stdout, Stdout};
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use anathema_render::{size, Screen, Size};
 use anathema_values::state::State;
@@ -10,57 +10,36 @@ use anathema_widget_core::expressions::Expression;
 use anathema_widget_core::layout::Constraints;
 use anathema_widget_core::nodes::{make_it_so, Node, NodeKind, Nodes};
 use anathema_widget_core::views::{AnyView, RegisteredViews, TabIndex, View, ViewFn, Views};
-use anathema_widget_core::{Event, EventProvider, Events, LayoutNodes, Padding, Pos};
+use anathema_widget_core::{Event, Events, LayoutNodes, Padding, Pos, KeyCode, KeyModifiers};
 use anathema_widgets::register_default_widgets;
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
-// use events::Event;
 
-// use view::View;
-// use self::frame::Frame;
-// pub use self::meta::Meta;
-// use crate::events::{EventProvider, Events};
-
-// pub mod events;
-// mod frame;
-// mod meta;
-// mod view;
-
-pub struct Runtime<'e, E, ER, S> {
+pub struct Runtime<'e> {
     pub enable_meta: bool,
     pub enable_mouse: bool,
-    // views: V,
-    state: S,
     screen: Screen,
     output: Stdout,
     constraints: Constraints,
     nodes: Nodes<'e>,
-    events: E,
-    event_receiver: ER,
+    events: Events,
+    fps: u8,
     // meta: Meta,
 }
 
-impl<'e, E, ER, S> Drop for Runtime<'e, E, ER, S> {
+impl<'e> Drop for Runtime<'e> {
     fn drop(&mut self) {
         let _ = Screen::show_cursor(&mut self.output);
         let _ = disable_raw_mode();
     }
 }
 
-impl<'e, E, ER, S: State> Runtime<'e, E, ER, S>
-where
-    E: Events<S>,
-    ER: EventProvider,
-{
-    pub fn new(
-        expressions: &'e [Expression],
-        state: S,
-        events: E,
-        event_receiver: ER,
-    ) -> Result<Self> {
+impl<'e> Runtime<'e> {
+    pub fn new(expressions: &'e [Expression]) -> Result<Self> {
         let nodes = make_it_so(expressions);
 
         register_default_widgets()?;
         enable_raw_mode()?;
+
         let mut stdout = stdout();
         Screen::hide_cursor(&mut stdout)?;
 
@@ -70,24 +49,22 @@ where
 
         let inst = Self {
             output: stdout,
-            state,
             screen,
             constraints,
             nodes,
-            events,
-            event_receiver,
             enable_meta: false,
             enable_mouse: false,
+            events: Events,
+            fps: 30,
             // meta: Meta::new(size),
         };
 
         Ok(inst)
     }
 
-    // TODO: move this into views
     fn layout(&mut self) -> Result<()> {
         self.nodes.reset_cache();
-        let context = Context::root(&self.state);
+        let context = Context::root(&());
         let mut nodes =
             LayoutNodes::new(&mut self.nodes, self.constraints, Padding::ZERO, &context);
 
@@ -117,7 +94,7 @@ where
             return;
         }
 
-        let context = Context::root(&self.state);
+        let context = Context::root(&());
 
         for (node_id, change) in dirty_nodes {
             self.nodes.update(node_id.as_slice(), &change, &context);
@@ -129,6 +106,31 @@ where
         // }
     }
 
+    fn tick_views(&mut self) {
+        let views = Views::for_each(|node_id| {
+            if let Some(Node { kind: NodeKind::View(view), .. }) = self.nodes.query().get(node_id) {
+                view.tick();
+            }
+        });
+    }
+
+    fn global_event(&self, event: Event) -> Event {
+        if let Event::CtrlC = event {
+            return Event::Quit;
+        }
+
+        // TODO: this should be behind a setting, so we don't assume tabbing
+        if let Event::KeyPress(KeyCode::Tab, modifiers, ..) = event {
+            if modifiers.contains(KeyModifiers::SHIFT) {
+                TabIndex::prev();
+            } else {
+                TabIndex::next();
+            }
+        }
+
+        event
+    }
+
     pub fn run(mut self) -> Result<()> {
         if self.enable_mouse {
             Screen::enable_mouse(&mut self.output)?;
@@ -136,16 +138,17 @@ where
 
         self.screen.clear_all(&mut self.output)?;
 
-        // self.layout()?;
-
-        // // return Ok(());
-
-        // self.position();
-        // self.paint();
+        let mut now = Instant::now();
+        let sleep_micros = ((1.0 / self.fps as f64) * 1000.0 * 1000.0) as u128;
 
         'run: loop {
-            while let Some(event) = self.event_receiver.next() {
-                let event = self.events.event(event, &mut self.nodes, &mut self.state);
+            while let Some(event) = self.events.poll(Duration::from_millis(1)) {
+                let event = self.global_event(event);
+
+                // Make sure event handling isn't holding up the rest of the event loop.
+                if now.elapsed().as_micros() > sleep_micros {
+                    break
+                }
 
                 match event {
                     Event::Resize(width, height) => {
@@ -199,6 +202,14 @@ where
             self.screen.erase();
 
             if self.enable_meta {}
+
+            self.tick_views();
+
+            let sleep = sleep_micros.saturating_sub(now.elapsed().as_micros()) as u64;
+            if sleep > 0 {
+                std::thread::sleep(Duration::from_micros(sleep));
+            }
+            now = Instant::now();
         }
     }
 

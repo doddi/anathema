@@ -149,6 +149,18 @@ impl View<'_> {
     pub fn on_event(&mut self, event: Event) {
         self.view.on_any_event(event, &mut self.nodes);
     }
+
+    pub fn tick(&mut self) {
+        self.view.tick_any();
+    }
+
+    pub fn focus(&mut self) {
+        self.view.focus_any();
+    }
+
+    pub fn blur(&mut self) {
+        self.view.blur_any();
+    }
 }
 
 #[derive(Debug)]

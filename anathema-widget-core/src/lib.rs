@@ -22,4 +22,4 @@ pub use crate::layout::{
 };
 pub use crate::style::WidgetStyle;
 pub use crate::widget::{AnyWidget, Widget, WidgetContainer};
-pub use crate::event::{Event, Events, EventProvider, DefaultEventProvider, DefaultEvents, KeyCode, KeyModifiers};
+pub use crate::event::{Event, Events, KeyCode, KeyModifiers};

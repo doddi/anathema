@@ -8,8 +8,6 @@ pub use crossterm::event::{
 
 use crate::Nodes;
 
-// use crate::meta::Meta;
-
 #[derive(Debug, Copy, Clone)]
 pub enum Event {
     Noop,
@@ -81,43 +79,13 @@ impl From<CTEvent> for Event {
     }
 }
 
-pub trait Events<S: State> {
-    fn event(&mut self, event: Event, tree: &mut Nodes, state: &mut S) -> Event;
-}
+pub struct Events;
 
-pub struct DefaultEvents<F, S>(pub F, pub std::marker::PhantomData<S>)
-where
-    F: FnMut(Event, &mut Nodes, &mut S) -> Event;
-
-impl<F, S: State> Events<S> for DefaultEvents<F, S>
-where
-    F: FnMut(Event, &mut Nodes, &mut S) -> Event,
-{
-    fn event(&mut self, event: Event, tree: &mut Nodes, state: &mut S) -> Event {
-        (self.0)(event, tree, state)
-    }
-}
-
-/// The event receiver should batch events to prevent starving the event loop.
-pub trait EventProvider {
-    fn next(&mut self) -> Option<Event>;
-}
-
-/// Default event provider, blocks the runtime for N ms
-pub struct DefaultEventProvider(Duration);
-
-impl DefaultEventProvider {
-    pub fn with_timeout(timeout: u64) -> Self {
-        Self(Duration::from_millis(timeout))
-    }
-}
-
-impl EventProvider for DefaultEventProvider {
-    fn next(&mut self) -> Option<Event> {
-        match crossterm::event::poll(self.0).ok()? {
+impl Events {
+    pub fn poll(&self, timeout: Duration) -> Option<Event> {
+        match crossterm::event::poll(timeout).ok()? {
             true => read().map(Into::into).ok(),
             false => None,
         }
     }
 }
-

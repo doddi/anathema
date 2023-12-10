@@ -3,7 +3,7 @@ mod scope;
 mod vm;
 
 use anathema_values::hashmap::HashMap;
-use anathema_widget_core::expressions::Expression;
+use anathema_widget_core::{expressions::Expression, views::{View, RegisteredViews}};
 pub use vm::VirtualMachine;
 
 use self::error::Result;
@@ -73,8 +73,13 @@ impl Templates {
         Ok(())
     }
 
-    pub fn add_view(&mut self, ident: String, template: String) {
-        self.view_templates.insert(ident, template);
+    pub fn add_view<F, T>(&mut self, ident: String, template: String, f: F) 
+    where
+        F: Send + 'static + Fn() -> T,
+        T: 'static + View + std::fmt::Debug,
+    {
+        self.view_templates.insert(ident.clone(), template);
+        RegisteredViews::add(ident, f)
     }
 
     pub fn expressions(&self) -> &[Expression] {
