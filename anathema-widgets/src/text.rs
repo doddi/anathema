@@ -127,6 +127,7 @@ impl Widget for Text {
         self.layout = TextLayout::ZERO;
         let max_size = Size::new(nodes.constraints.max_width, nodes.constraints.max_height);
         self.layout.set_max_size(max_size);
+
         self.word_wrap
             .value_ref()
             .map(|wrap| self.layout.set_wrap(*wrap));
@@ -139,7 +140,6 @@ impl Widget for Text {
             }
 
             let inner_span = span.to_mut::<TextSpan>();
-            // inner_span.update_text(data);
 
             self.layout.process(inner_span.text.str());
             Ok(())

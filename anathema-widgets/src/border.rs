@@ -317,6 +317,16 @@ impl Widget for Border {
         Self::KIND
     }
 
+    fn update(&mut self, context: &Context<'_, '_>, node_id: &NodeId) {
+        self.style.resolve(context, None);
+        self.border_style.resolve(context, None);
+        self.sides.resolve(context, None);
+        self.height.resolve(context, None);
+        self.width.resolve(context, None);
+        self.min_width.resolve(context, None);
+        self.min_height.resolve(context, None);
+    }
+
     fn layout<'e>(&mut self, nodes: &mut LayoutNodes<'_, '_, 'e>) -> Result<Size> {
         let mut layout = BorderLayout {
             min_height: self.min_height.value(),

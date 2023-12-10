@@ -258,13 +258,10 @@ impl<'src, 'consts> Lexer<'src, 'consts> {
             "view" => Kind::View,
             "true" => Kind::Value(Value::Bool(true)),
             "false" => Kind::Value(Value::Bool(false)),
-            s => match Color::try_from(s) {
-                Ok(color) => Kind::Value(Value::Color(color)),
-                Err(()) => {
-                    let string_id = self.consts.store_string(s);
-                    Kind::Value(Value::Ident(string_id))
-                }
-            },
+            s => {
+                let string_id = self.consts.store_string(s);
+                Kind::Value(Value::Ident(string_id))
+            }
         }
     }
 

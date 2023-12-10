@@ -114,17 +114,39 @@ impl<'e> Runtime<'e> {
         });
     }
 
-    fn global_event(&self, event: Event) -> Event {
+    fn global_event(&mut self, event: Event) -> Event {
+        // -----------------------------------------------------------------------------
+        //   - Ctrl-c to quite -
+        //   This should be on by default.
+        //   Give it a good name
+        // -----------------------------------------------------------------------------
         if let Event::CtrlC = event {
             return Event::Quit;
         }
 
-        // TODO: this should be behind a setting, so we don't assume tabbing
+        // -----------------------------------------------------------------------------
+        //   - Handle tabbing between widgets -
+        //   TODO: this should be behind a setting on the runtime
+        //   Just need to come up with a good name for it.
+        //   Should probably be on by default
+        // -----------------------------------------------------------------------------
         if let Event::KeyPress(KeyCode::Tab, modifiers, ..) = event {
+            if let Some(current) = TabIndex::current() {
+                if let Some(Node { kind: NodeKind::View(view), .. }) = self.nodes.query().get(&current) {
+                    view.blur();
+                }
+            }
+
             if modifiers.contains(KeyModifiers::SHIFT) {
                 TabIndex::prev();
             } else {
                 TabIndex::next();
+            }
+
+            if let Some(current) = TabIndex::current() {
+                if let Some(Node { kind: NodeKind::View(view), .. }) = self.nodes.query().get(&current) {
+                    view.focus();
+                }
             }
         }
 

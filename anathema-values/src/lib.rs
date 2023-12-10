@@ -265,7 +265,44 @@ impl DynValue for bool {
     }
 }
 
-impl_dyn_value!(anathema_render::Color);
+impl DynValue for anathema_render::Color {
+    fn init_value(
+        context: &Context<'_, '_>,
+        node_id: Option<&NodeId>,
+        expr: &ValueExpr,
+    ) -> Value<Self> {
+        let mut resolver = Resolver::new(context, node_id);
+        let inner = match resolver.resolve(&expr) {
+            ValueRef::Str(col) => anathema_render::Color::try_from(col).ok(),
+            val => val.try_into().ok()
+        };
+
+        match resolver.is_deferred() {
+            true => Value::Dyn {
+                inner,
+                expr: expr.clone(),
+            },
+            false => match inner {
+                Some(val) => Value::Static(val),
+                None => Value::Empty,
+            },
+        }
+    }
+
+    fn resolve(value: &mut Value<Self>, context: &Context<'_, '_>, node_id: Option<&NodeId>) {
+        match value {
+            Value::Dyn { inner, expr } => {
+                *inner = Resolver::new(context, node_id)
+                    .resolve(expr)
+                    .try_into()
+                    .ok()
+            }
+            _ => {}
+        }
+    }
+}
+
+// impl_dyn_value!(anathema_render::Color);
 
 impl_dyn_value!(usize);
 impl_dyn_value!(u64);
