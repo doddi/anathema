@@ -1,18 +1,21 @@
 mod local_spawner;
 
+use crate::local_spawner::{LocalSpawner, Task};
 use log::{debug, info};
 use std::fs::File;
 use std::sync::Mutex;
 use tower_lsp::jsonrpc::Result;
-use tower_lsp::lsp_types::{DidChangeTextDocumentParams, DidOpenTextDocumentParams, InitializeParams, InitializeResult, InitializedParams, ServerCapabilities, ServerInfo, TextDocumentSyncCapability, TextDocumentSyncKind, Url};
+use tower_lsp::lsp_types::{
+    DidChangeTextDocumentParams, DidOpenTextDocumentParams, InitializeParams, InitializeResult, InitializedParams,
+    ServerCapabilities, ServerInfo, TextDocumentSyncCapability, TextDocumentSyncKind, Url,
+};
 use tower_lsp::{Client, LanguageServer, LspService, Server};
-use tracing_subscriber::EnvFilter;
 use tracing_subscriber::filter::LevelFilter;
-use crate::local_spawner::{LocalSpawner, Task};
+use tracing_subscriber::EnvFilter;
 
 struct Backend {
     spawner: LocalSpawner,
-    client: Client
+    client: Client,
 }
 
 impl Backend {
@@ -21,7 +24,8 @@ impl Backend {
     }
 
     async fn compile(&self, uri: Url, content: &str) {
-        self.spawner.spawn(Task::Compile(uri, content.to_string(), self.client.clone()));
+        self.spawner
+            .spawn(Task::Compile(uri, content.to_string(), self.client.clone()));
     }
 }
 
@@ -36,9 +40,7 @@ impl LanguageServer for Backend {
                 version: None,
             }),
             capabilities: ServerCapabilities {
-                text_document_sync: Some(TextDocumentSyncCapability::Kind(
-                    TextDocumentSyncKind::FULL,
-                )),
+                text_document_sync: Some(TextDocumentSyncCapability::Kind(TextDocumentSyncKind::FULL)),
                 ..ServerCapabilities::default()
             },
             offset_encoding: None,
@@ -63,10 +65,7 @@ impl LanguageServer for Backend {
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
         info!("doc changed {}", params.text_document.uri);
 
-        self.compile(
-            params.text_document.uri,
-            params.content_changes[0].text.as_str(),
-        )
+        self.compile(params.text_document.uri, params.content_changes[0].text.as_str())
             .await;
     }
 }
@@ -75,9 +74,8 @@ impl LanguageServer for Backend {
 async fn main() {
     let log_file = File::create("/tmp/trace.log").expect("should create trace file");
 
-    let env = EnvFilter::from_default_env()
-        .add_directive(LevelFilter::TRACE.into());
-    
+    let env = EnvFilter::from_default_env().add_directive(LevelFilter::TRACE.into());
+
     tracing_subscriber::fmt()
         .with_env_filter(env)
         .with_writer(Mutex::new(log_file))
@@ -88,7 +86,8 @@ async fn main() {
     let (service, socket) = LspService::build(|client| {
         let spawner = LocalSpawner::new();
         Backend::new(spawner, client)
-    }).finish();
+    })
+    .finish();
     Server::new(stdin, stdout, socket).serve(service).await;
 }
 
