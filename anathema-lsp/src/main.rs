@@ -1,15 +1,16 @@
+mod local_spawner;
+
 use log::{debug, info};
 use std::fs::File;
 use std::sync::Mutex;
+use tokio::sync::oneshot;
+use tokio::sync::oneshot::error::RecvError;
 use tower_lsp::jsonrpc::Result;
-use tower_lsp::lsp_types::{
-    Diagnostic, DidChangeTextDocumentParams, DidOpenTextDocumentParams, InitializeParams,
-    InitializeResult, InitializedParams, Range, ServerCapabilities, ServerInfo,
-    TextDocumentSyncCapability, TextDocumentSyncKind, Url,
-};
+use tower_lsp::lsp_types::{Diagnostic, DidChangeTextDocumentParams, DidOpenTextDocumentParams, InitializeParams, InitializeResult, InitializedParams, ServerCapabilities, ServerInfo, TextDocumentSyncCapability, TextDocumentSyncKind, Url};
 use tower_lsp::{lsp_types, Client, LanguageServer, LspService, Server};
 use tracing_subscriber::EnvFilter;
-use anathema_templates::error::Error::ParseError;
+use tracing_subscriber::filter::LevelFilter;
+use crate::local_spawner::{LocalSpawner, Task};
 
 #[derive(Debug)]
 struct Backend {
@@ -22,10 +23,21 @@ impl Backend {
     }
 
     async fn compile(&self, uri: Url, content: &str) {
-        let compilation_result = anathema_templates::Document::new(content).compile();
+        let spawner = LocalSpawner::new();
+        let (send, response) = oneshot::channel();
+        spawner.spawn(Task::Compile(content.to_string(), send));
 
+        let result = response.await;
+        
+        let compilation_result = match result {
+            Ok(cr) => cr,
+            Err(err) => panic!("error: {:?}", err), 
+        };
+        
+        debug!("received response");
+        
         match compilation_result {
-            Ok(_) => {
+            None => {
                 debug!("compilation success");
                 self.client
                     .log_message(
@@ -36,32 +48,8 @@ impl Backend {
 
                 self.client.publish_diagnostics(uri, vec![], None).await;
             }
-            Err(err) => {
-                match err {
-                    ParseError(msg) => {
-                        let line = msg.line;
-                        let line_length = content.lines().nth(line - 1).unwrap().len();
-                        self.client
-                            .publish_diagnostics(
-                                uri,
-                                vec![Diagnostic::new_simple(
-                                    Range::new(
-                                        lsp_types::Position::new(line as u32 - 1, 0),
-                                        lsp_types::Position::new(line as u32 - 1, line_length as u32),
-                                    ),
-                                    format!("{:?}", msg.kind),
-                                )],
-                                None,
-                            )
-                            .await;
-                    }
-                    // Error::CircularDependency => {}
-                    // Error::MissingComponent(msg) => {}
-                    // Error::EmptyTemplate => {}
-                    // Error::EmptyBody => {}
-                    // Error::Io(msg) => {}
-                    _ => {}
-                }
+            Some(diagnostics) => {
+                self.client.publish_diagnostics(uri, diagnostics, None).await;
             }
         }
     }
@@ -116,8 +104,12 @@ impl LanguageServer for Backend {
 #[tokio::main]
 async fn main() {
     let log_file = File::create("/tmp/trace.log").expect("should create trace file");
+
+    let env = EnvFilter::from_default_env()
+        .add_directive(LevelFilter::TRACE.into());
+    
     tracing_subscriber::fmt()
-        .with_env_filter(EnvFilter::from_default_env())
+        .with_env_filter(env)
         .with_writer(Mutex::new(log_file))
         .init();
 

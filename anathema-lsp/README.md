@@ -11,7 +11,7 @@ To enable the lsp for neovim, add the following to your `init.lua`:
 
 ```lua
 vim.api.nvim_create_autocmd("BufEnter", {
-  pattern = "*.anat",
+  pattern = "*.aml",
   callback = function()
     vim.lsp.start({
       name = "anathema-lsp",
