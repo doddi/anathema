@@ -4,6 +4,7 @@ use tokio::sync::{mpsc, oneshot};
 use tokio::task::LocalSet;
 use tower_lsp::lsp_types;
 use tower_lsp::lsp_types::{Diagnostic, Range};
+use anathema_templates::error::Error;
 use anathema_templates::error::Error::ParseError;
 
 #[derive(Debug)]
@@ -83,9 +84,19 @@ async fn run_task(task: Task) {
                             )];
                             let _ = response.send(Some(diagnostics));
                         }
-                        _ => {
+                        Error::CircularDependency => {
+                            // TODO: Implement circular dependency error handling
                             let _ = response.send(None);
-                        },
+                        }
+                        Error::MissingComponent(_component) => {
+                            // TODO: Implement missing component error handling
+                            let _ = response.send(None);
+                        }
+                        Error::EmptyTemplate |
+                        Error::EmptyBody |
+                        Error::Io(_) => { 
+                            let _ = response.send(None);
+                        }
                     }
                 }
             }
