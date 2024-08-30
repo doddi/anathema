@@ -1,14 +1,13 @@
 mod local_spawner;
+mod hover_dictionary;
+mod document_store;
 
 use crate::local_spawner::{LocalSpawner, Task};
 use log::{debug, info};
 use std::fs::File;
 use std::sync::Mutex;
 use tower_lsp::jsonrpc::Result;
-use tower_lsp::lsp_types::{
-    DidChangeTextDocumentParams, DidOpenTextDocumentParams, InitializeParams, InitializeResult, InitializedParams,
-    ServerCapabilities, ServerInfo, TextDocumentSyncCapability, TextDocumentSyncKind, Url,
-};
+use tower_lsp::lsp_types::*;
 use tower_lsp::{Client, LanguageServer, LspService, Server};
 use tracing_subscriber::filter::LevelFilter;
 use tracing_subscriber::EnvFilter;
@@ -16,11 +15,18 @@ use tracing_subscriber::EnvFilter;
 struct Backend {
     spawner: LocalSpawner,
     client: Client,
+    store: document_store::DocumentStore,
+    hover_dictionary: hover_dictionary::HoverDictionary,
 }
 
 impl Backend {
     pub fn new(spawner: LocalSpawner, client: Client) -> Self {
-        Backend { spawner, client }
+        Backend {
+            spawner,
+            client,
+            store: document_store::DocumentStore::new(),
+            hover_dictionary: hover_dictionary::HoverDictionary::new(),
+        }
     }
 
     async fn compile(&self, uri: Url, content: &str) {
@@ -41,6 +47,7 @@ impl LanguageServer for Backend {
             }),
             capabilities: ServerCapabilities {
                 text_document_sync: Some(TextDocumentSyncCapability::Kind(TextDocumentSyncKind::FULL)),
+                hover_provider: Some(HoverProviderCapability::Simple(true)),
                 ..ServerCapabilities::default()
             },
             offset_encoding: None,
@@ -57,16 +64,46 @@ impl LanguageServer for Backend {
 
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
         debug!("doc opened {}", params.text_document.uri);
-
+        self.store.insert(params.text_document.uri.clone(), params.text_document.text.clone());
         self.compile(params.text_document.uri, params.text_document.text.as_str())
             .await;
     }
 
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
         info!("doc changed {}", params.text_document.uri);
-
+        self.store.insert(params.text_document.uri.clone(), params.content_changes[0].text.clone());
         self.compile(params.text_document.uri, params.content_changes[0].text.as_str())
             .await;
+    }
+
+    async fn did_close(&self, params: DidCloseTextDocumentParams) {
+        self.store.remove(&params.text_document.uri);
+    }
+
+    async fn hover(&self, params: HoverParams) -> Result<Option<tower_lsp::lsp_types::Hover>> {
+        if let Some(document) = self.store.get(&params.text_document_position_params.text_document.uri) {
+            let line_pos = params.text_document_position_params.position.line;
+            let character_pos = params.text_document_position_params.position.character;
+
+            if let Some(line) = document.lines().nth(line_pos as usize) {
+                //find the word at the character position in the line
+                let word = line.split_whitespace().find(|word| {
+                    let start = line.find(word).unwrap();
+                    let end = start + word.len();
+                    start <= character_pos as usize && character_pos as usize <= end
+                });
+
+                if let Some(word) = word {
+                    if let Some(markup) = self.hover_dictionary.lookup_word_markup(word) {
+                        return Ok(Some(Hover {
+                            contents: HoverContents::Markup(markup),
+                            range: None,
+                        }))
+                    }
+                }
+            }
+        }
+        Ok(None)
     }
 }
 
