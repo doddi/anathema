@@ -57,6 +57,10 @@ Run the debugger and open the provided `test.anat` file to test the lsp.
 ## Features
 
 Currently, the following features are supported:
-- Diagnostics that show any compilations errors
+### Diagnostics
+Show any compilations errors
+![diagnostics](docs/anathema_lsp.gif)
 
-![img.png](docs/diagnostics)
+### Hover support 
+Shows the type of the expression under the cursor
+![hover](docs/anathema_lsp_hover.gif)
