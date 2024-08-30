@@ -1,7 +1,8 @@
 use log::{debug, info};
 use tower_lsp::{Client, LanguageServer};
-use tower_lsp::lsp_types::{DidChangeTextDocumentParams, DidCloseTextDocumentParams, DidOpenTextDocumentParams, Hover, HoverContents, HoverParams, HoverProviderCapability, InitializeParams, InitializeResult, InitializedParams, ServerCapabilities, ServerInfo, TextDocumentSyncCapability, TextDocumentSyncKind, Url};
+use tower_lsp::lsp_types::{CompletionItem, CompletionOptions, CompletionParams, CompletionResponse, DidChangeTextDocumentParams, DidCloseTextDocumentParams, DidOpenTextDocumentParams, Hover, HoverContents, HoverParams, HoverProviderCapability, InitializeParams, InitializeResult, InitializedParams, ServerCapabilities, ServerInfo, TextDocumentSyncCapability, TextDocumentSyncKind, Url};
 use crate::{document_store, hover_dictionary};
+use crate::auto_complete::get_auto_complete_options;
 use crate::local_spawner::{LocalSpawner, Task};
 
 pub(crate) struct Backend {
@@ -40,6 +41,7 @@ impl LanguageServer for Backend {
             capabilities: ServerCapabilities {
                 text_document_sync: Some(TextDocumentSyncCapability::Kind(TextDocumentSyncKind::FULL)),
                 hover_provider: Some(HoverProviderCapability::Simple(true)),
+                completion_provider: Some(CompletionOptions::default()),
                 ..ServerCapabilities::default()
             },
             offset_encoding: None,
@@ -72,7 +74,7 @@ impl LanguageServer for Backend {
         self.store.remove(&params.text_document.uri);
     }
 
-    async fn hover(&self, params: HoverParams) -> tower_lsp::jsonrpc::Result<Option<tower_lsp::lsp_types::Hover>> {
+    async fn hover(&self, params: HoverParams) -> tower_lsp::jsonrpc::Result<Option<Hover>> {
         if let Some(document) = self.store.get(&params.text_document_position_params.text_document.uri) {
             let line_pos = params.text_document_position_params.position.line;
             let character_pos = params.text_document_position_params.position.character;
@@ -91,6 +93,37 @@ impl LanguageServer for Backend {
                             contents: HoverContents::Markup(markup),
                             range: None,
                         }))
+                    }
+                }
+            }
+        }
+        Ok(None)
+    }
+
+    async fn completion(&self, params: CompletionParams) -> tower_lsp::jsonrpc::Result<Option<CompletionResponse>> {
+        if let Some(document) = self.store.get(&params.text_document_position.text_document.uri) {
+            let line_pos = params.text_document_position.position.line;
+            let character_pos = params.text_document_position.position.character;
+
+            if let Some(line) = document.lines().nth(line_pos as usize) {
+                //find the word at the character position in the line
+                let word = line.split_whitespace().find(|word| {
+                    let start = line.find(word).unwrap();
+                    let end = start + word.len();
+                    start <= character_pos as usize && character_pos as usize <= end
+                });
+
+                if let Some(word) = word {
+                    let complete_options = get_auto_complete_options(word);
+                    if let Some(options) = complete_options {
+                        let completions = options.iter().map(|option| {
+                            CompletionItem {
+                                label: option.to_string(),
+                                ..CompletionItem::default()
+                            }
+                        }).collect();
+                        debug!("completions: {:?}", completions);
+                        return Ok(Some(CompletionResponse::Array(completions)));
                     }
                 }
             }

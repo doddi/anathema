@@ -5,12 +5,12 @@ pub(crate) struct HoverDictionary {
     store: HashMap<&'static str, &'static str>,
 }
 
-const TEXT: &'static str = include_str!("../docs/text.md");
-const SPAN: &'static str = include_str!("../docs/span.md");
-const BORDER: &'static str = include_str!("../docs/border.md");
-const ALIGN: &'static str = include_str!("../docs/align.md");
-const VSTACK: &'static str = include_str!("../docs/vstack.md");
-const HSTACK: &'static str = include_str!("../docs/hstack.md");
+const TEXT: &str = include_str!("../docs/text.md");
+const SPAN: &str = include_str!("../docs/span.md");
+const BORDER: &str = include_str!("../docs/border.md");
+const ALIGN: &str = include_str!("../docs/align.md");
+const VSTACK: &str = include_str!("../docs/vstack.md");
+const HSTACK: &str = include_str!("../docs/hstack.md");
 
 impl HoverDictionary {
     pub fn new() -> Self {

@@ -2,6 +2,7 @@ mod local_spawner;
 mod hover_dictionary;
 mod document_store;
 mod lsp;
+mod auto_complete;
 
 use crate::local_spawner::{LocalSpawner};
 use std::fs::File;
