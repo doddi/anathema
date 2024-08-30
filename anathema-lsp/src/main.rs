@@ -9,6 +9,7 @@ use tower_lsp::lsp_types::{
 };
 use tower_lsp::{lsp_types, Client, LanguageServer, LspService, Server};
 use tracing_subscriber::EnvFilter;
+use anathema_templates::error::Error::ParseError;
 
 #[derive(Debug)]
 struct Backend {
@@ -21,10 +22,10 @@ impl Backend {
     }
 
     async fn compile(&self, uri: Url, content: &str) {
-        let compilation_result = anathema_compiler::compile(content);
+        let compilation_result = anathema_templates::Document::new(content).compile();
 
         match compilation_result {
-            Ok((_instructions, _constants)) => {
+            Ok(_) => {
                 debug!("compilation success");
                 self.client
                     .log_message(
@@ -35,26 +36,31 @@ impl Backend {
 
                 self.client.publish_diagnostics(uri, vec![], None).await;
             }
-            Err(e) => {
-                debug!("error: {:?}", e);
-
-                let mut lines = content.lines();
-                if let Some(line) = lines.nth(e.line - 1) {
-                    info!("line: {}", line);
-                    let line_length = line.len();
-                    self.client
-                        .publish_diagnostics(
-                            uri,
-                            vec![Diagnostic::new_simple(
-                                Range::new(
-                                    lsp_types::Position::new(e.line as u32 - 1, 0),
-                                    lsp_types::Position::new(e.line as u32 - 1, line_length as u32),
-                                ),
-                                format!("{:?}", e.kind),
-                            )],
-                            None,
-                        )
-                        .await;
+            Err(err) => {
+                match err {
+                    ParseError(msg) => {
+                        let line = msg.line;
+                        let line_length = content.lines().nth(line - 1).unwrap().len();
+                        self.client
+                            .publish_diagnostics(
+                                uri,
+                                vec![Diagnostic::new_simple(
+                                    Range::new(
+                                        lsp_types::Position::new(line as u32 - 1, 0),
+                                        lsp_types::Position::new(line as u32 - 1, line_length as u32),
+                                    ),
+                                    format!("{:?}", msg.kind),
+                                )],
+                                None,
+                            )
+                            .await;
+                    }
+                    // Error::CircularDependency => {}
+                    // Error::MissingComponent(msg) => {}
+                    // Error::EmptyTemplate => {}
+                    // Error::EmptyBody => {}
+                    // Error::Io(msg) => {}
+                    _ => {}
                 }
             }
         }
@@ -103,7 +109,7 @@ impl LanguageServer for Backend {
             params.text_document.uri,
             params.content_changes[0].text.as_str(),
         )
-        .await;
+            .await;
     }
 }
 
@@ -130,7 +136,7 @@ mod test {
             [
         "#;
 
-        let result = anathema_compiler::compile(src);
+        let result = anathema_templates::Document::new(src).compile();
         assert!(result.is_err());
     }
 
@@ -143,7 +149,7 @@ mod test {
                 text
         "#;
 
-        let result = anathema_compiler::compile(src);
+        let result = anathema_templates::Document::new(src).compile();
         assert!(result.is_ok());
     }
 }
