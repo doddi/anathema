@@ -1,6 +1,6 @@
 use log::{debug, info};
 use tower_lsp::{Client, LanguageServer};
-use tower_lsp::lsp_types::{CompletionItem, CompletionOptions, CompletionParams, CompletionResponse, DidChangeTextDocumentParams, DidCloseTextDocumentParams, DidOpenTextDocumentParams, Hover, HoverContents, HoverParams, HoverProviderCapability, InitializeParams, InitializeResult, InitializedParams, ServerCapabilities, ServerInfo, TextDocumentSyncCapability, TextDocumentSyncKind, Url};
+use tower_lsp::lsp_types::{CompletionOptions, CompletionParams, CompletionResponse, DidChangeTextDocumentParams, DidCloseTextDocumentParams, DidOpenTextDocumentParams, Hover, HoverContents, HoverParams, HoverProviderCapability, InitializeParams, InitializeResult, InitializedParams, ServerCapabilities, ServerInfo, TextDocumentSyncCapability, TextDocumentSyncKind, Url};
 use crate::{document_store, hover_dictionary};
 use crate::auto_complete::get_auto_complete_options;
 use crate::local_spawner::{LocalSpawner, Task};
@@ -115,15 +115,8 @@ impl LanguageServer for Backend {
 
                 if let Some(word) = word {
                     let complete_options = get_auto_complete_options(line, word);
-                    if let Some(options) = complete_options {
-                        let completions = options.iter().map(|option| {
-                            CompletionItem {
-                                label: option.to_string(),
-                                ..CompletionItem::default()
-                            }
-                        }).collect();
-                        debug!("completions: {:?}", completions);
-                        return Ok(Some(CompletionResponse::Array(completions)));
+                    if let Some(options) = complete_options { 
+                        return Ok(Some(CompletionResponse::Array(options)));
                     }
                 }
             }
