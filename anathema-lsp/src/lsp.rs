@@ -114,7 +114,7 @@ impl LanguageServer for Backend {
                 });
 
                 if let Some(word) = word {
-                    let complete_options = get_auto_complete_options(word);
+                    let complete_options = get_auto_complete_options(line, word);
                     if let Some(options) = complete_options {
                         let completions = options.iter().map(|option| {
                             CompletionItem {

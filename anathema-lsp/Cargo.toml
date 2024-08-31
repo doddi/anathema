@@ -9,4 +9,6 @@ tokio = { version = "1.40.0", features = ["rt", "rt-multi-thread", "macros", "io
 tower-lsp = { version = "0.20.0", features = ["proposed"] }
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
 log = "0.4.20"
+strum_macros = "0.26.4"
+strum = "0.26.3"
 
