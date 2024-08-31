@@ -2,6 +2,7 @@ use std::fmt::{Display, Formatter};
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 use tower_lsp::lsp_types::{CompletionItem, CompletionItemKind};
+use crate::word_handling;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, EnumIter)]
 pub(crate) enum Component {
@@ -160,43 +161,47 @@ impl TryFrom<&str> for SideValues {
     }
 }
 
-pub(crate) fn get_auto_complete_options(line: &str, word: &str) -> Option<Vec<CompletionItem>> {
-    let tokens: Vec<&str> = line.split(" ").collect();
+// TODO: Not liking this, need to consider a lexer
+pub(crate) fn get_auto_complete_options(line: &str, character_pos: u32) -> Option<Vec<CompletionItem>> {
+    //find the word at the character position in the line
+    if let Some(word) = word_handling::get_current_word(line, character_pos) {
+        let tokens: Vec<&str> = line.split(" ").collect();
 
-    // Is this the first token?
-    if tokens.len() == 1 {
-        // Find the Components that contain the word at the start
-        let collection: Vec<_> = Component::iter()
-            .filter(|x| x.to_string().starts_with(word))
-            .map(|x| x.into()).collect();
-        if !collection.is_empty() {
-            return Some(collection);
-        }
-    }
-    else {
-        // Check the first_token is a component from the Component enum
-        if let Ok(component) = Component::try_from(*tokens.first()?) {
-            // Find the component in the list
-            match component {
-                Component::Border => {
-                    if tokens.get(1)?.starts_with("[") {
-                        // Account for the possibility of a '[' at the start of the word
-                        let word = word.trim_start_matches('[');
-                        // Find the BorderAttributes that contain the word at the start
-                        let collection: Vec<_> = BorderAttributes::iter()
-                            .filter(|x| x.to_string().starts_with(word))
-                            .map(|x| x.into()).collect();
-                        if !collection.is_empty() {
-                            return Some(collection);
+        // Is this the first token?
+        if tokens.len() == 1 {
+            // Find the Components that contain the word at the start
+            let collection: Vec<_> = Component::iter()
+                .filter(|x| x.to_string().starts_with(word))
+                .map(|x| x.into()).collect();
+            if !collection.is_empty() {
+                return Some(collection);
+            }
+        } else {
+            // Check the first_token is a component from the Component enum
+            if let Ok(component) = Component::try_from(*tokens.first()?) {
+                // Find the component in the list
+                match component {
+                    Component::Border => {
+                        if tokens.get(1)?.starts_with("[") {
+                            // Account for the possibility of a '[' at the start of the word
+                            let word = word.trim_start_matches('[');
+                            // Find the BorderAttributes that contain the word at the start
+                            let collection: Vec<_> = BorderAttributes::iter()
+                                .filter(|x| x.to_string().starts_with(word))
+                                .map(|x| x.into()).collect();
+                            if !collection.is_empty() {
+                                return Some(collection);
+                            }
                         }
-                    }
-                },
-                _ => return None
+                    },
+                    _ => return None
+                }
             }
         }
     }
     None
 }
+
 
 #[cfg(test)]
 mod tests {

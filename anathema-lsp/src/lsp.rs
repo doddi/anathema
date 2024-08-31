@@ -80,20 +80,11 @@ impl LanguageServer for Backend {
             let character_pos = params.text_document_position_params.position.character;
 
             if let Some(line) = document.lines().nth(line_pos as usize) {
-                //find the word at the character position in the line
-                let word = line.split_whitespace().find(|word| {
-                    let start = line.find(word).unwrap();
-                    let end = start + word.len();
-                    start <= character_pos as usize && character_pos as usize <= end
-                });
-
-                if let Some(word) = word {
-                    if let Some(markup) = self.hover_dictionary.lookup_word_markup(word) {
-                        return Ok(Some(Hover {
-                            contents: HoverContents::Markup(markup),
-                            range: None,
-                        }))
-                    }
+                if let Some(markup) = self.hover_dictionary.lookup_word_markup(line, character_pos) {
+                    return Ok(Some(Hover {
+                        contents: HoverContents::Markup(markup),
+                        range: None,
+                    }))
                 }
             }
         }
@@ -106,22 +97,12 @@ impl LanguageServer for Backend {
             let character_pos = params.text_document_position.position.character;
 
             if let Some(line) = document.lines().nth(line_pos as usize) {
-                //find the word at the character position in the line
-                let word = line.split_whitespace().find(|word| {
-                    let start = line.find(word).unwrap();
-                    let end = start + word.len();
-                    start <= character_pos as usize && character_pos as usize <= end
-                });
-
-                if let Some(word) = word {
-                    let complete_options = get_auto_complete_options(line, word);
-                    if let Some(options) = complete_options { 
-                        return Ok(Some(CompletionResponse::Array(options)));
-                    }
+                let complete_options = get_auto_complete_options(line, character_pos);
+                if let Some(options) = complete_options { 
+                    return Ok(Some(CompletionResponse::Array(options)));
                 }
             }
         }
         Ok(None)
     }
 }
-

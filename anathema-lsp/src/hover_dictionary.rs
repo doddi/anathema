@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use tower_lsp::lsp_types::{MarkupContent, MarkupKind};
+use crate::word_handling;
 
 pub(crate) struct HoverDictionary {
     store: HashMap<&'static str, &'static str>,
@@ -47,12 +48,14 @@ impl HoverDictionary {
         }
     }
 
-    pub(crate) fn lookup_word_markup(&self, word: &str) -> Option<MarkupContent> {
-        if let Some(description) = self.store.get(word) {
-            return Some(MarkupContent {
-                kind: MarkupKind::Markdown,
-                value: description.to_string(),
-            });
+    pub(crate) fn lookup_word_markup(&self, line: &str, character_pos: u32) -> Option<MarkupContent> {
+        if let Some(word) = word_handling::get_current_word(line, character_pos) {
+            if let Some(description) = self.store.get(word) {
+                return Some(MarkupContent {
+                    kind: MarkupKind::Markdown,
+                    value: description.to_string(),
+                });
+            }
         }
         None
     }
